@@ -34,55 +34,70 @@ app.use((req, res, next) => {
 
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 30000,
+  idleTimeoutMillis: 30000
 });
 
 async function initDB() {
-  try {
-    await db.query(`CREATE TABLE IF NOT EXISTS admins (
-      id SERIAL PRIMARY KEY,
-      username VARCHAR(255) UNIQUE NOT NULL,
-      password VARCHAR(255) NOT NULL,
-      email VARCHAR(255)
-    )`);
-    
-    await db.query(`CREATE TABLE IF NOT EXISTS certificates (
-      id SERIAL PRIMARY KEY,
-      program_name VARCHAR(255) NOT NULL,
-      name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      certificate_path TEXT NOT NULL,
-      certificate_id VARCHAR(36) UNIQUE,
-      verification_code VARCHAR(255),
-      uploaded_by VARCHAR(255),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE (program_name, email)
-    )`);
-    
-    await db.query(`CREATE TABLE IF NOT EXISTS otps (
-      id SERIAL PRIMARY KEY,
-      email VARCHAR(255) NOT NULL,
-      otp VARCHAR(6) NOT NULL,
-      expires_at TIMESTAMP NOT NULL,
-      verified BOOLEAN DEFAULT FALSE
-    )`);
-    
-    await db.query(`CREATE TABLE IF NOT EXISTS programs (
-      id SERIAL PRIMARY KEY,
-      title VARCHAR(255) NOT NULL,
-      link VARCHAR(500),
-      dates VARCHAR(255),
-      created_by VARCHAR(255),
-      expiry_date TIMESTAMP,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE (title, dates)
-    )`);
-    
-    await db.query(`INSERT INTO admins (username, password, email) VALUES ('admin', 'admin123', 'admin@example.com') ON CONFLICT DO NOTHING`);
-    
-    console.log('✅ PostgreSQL database initialized');
-  } catch (error) {
-    console.error('❌ Database error:', error);
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      console.log('🔄 Connecting to database...');
+      await db.query('SELECT NOW()');
+      
+      await db.query(`CREATE TABLE IF NOT EXISTS admins (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        email VARCHAR(255)
+      )`);
+      
+      await db.query(`CREATE TABLE IF NOT EXISTS certificates (
+        id SERIAL PRIMARY KEY,
+        program_name VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        certificate_path TEXT NOT NULL,
+        certificate_id VARCHAR(36) UNIQUE,
+        verification_code VARCHAR(255),
+        uploaded_by VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (program_name, email)
+      )`);
+      
+      await db.query(`CREATE TABLE IF NOT EXISTS otps (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        otp VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        verified BOOLEAN DEFAULT FALSE
+      )`);
+      
+      await db.query(`CREATE TABLE IF NOT EXISTS programs (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        link VARCHAR(500),
+        dates VARCHAR(255),
+        created_by VARCHAR(255),
+        expiry_date TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (title, dates)
+      )`);
+      
+      await db.query(`INSERT INTO admins (username, password, email) VALUES ('admin', 'admin123', 'admin@example.com') ON CONFLICT DO NOTHING`);
+      
+      console.log('✅ PostgreSQL database initialized');
+      return;
+    } catch (error) {
+      console.error(`❌ Database connection failed (${retries} retries left):`, error.message);
+      retries--;
+      if (retries === 0) {
+        console.error('💀 Failed to connect to database after all retries');
+        process.exit(1);
+      }
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
   }
 }
 
