@@ -88,7 +88,7 @@ async function initDB() {
 
 initDB();
 
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: 'mnabhishek99@gmail.com',
