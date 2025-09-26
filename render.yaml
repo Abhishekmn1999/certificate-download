@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: certificate-download
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        fromDatabase:
+          name: certificates-mysql
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: certificates-mysql
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: certificates-mysql
+          property: password
+      - key: DB_NAME
+        value: certificates_db
+
+databases:
+  - name: certificates-mysql
+    databaseName: certificates_db
+    user: certificates_user

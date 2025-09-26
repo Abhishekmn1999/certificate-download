@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Download System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0px; }
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .header h1 { font-size: 2rem; }
+            .tabs { flex-direction: column; gap: 8px; }
+            .tab { padding: 12px 20px; }
+            .content { padding: 24px; border-radius: 16px; }
+            #admin-content { padding: 16px; }
+            .dashboard-grid { grid-template-columns: 1fr; gap: 16px; }
+            .dashboard-card { padding: 20px; }
+            .cert-table { font-size: 12px; overflow-x: auto; }
+            .cert-table th, .cert-table td { padding: 12px 8px; }
+            input, select, button { padding: 12px 16px; font-size: 14px; }
+            .stats-number { font-size: 2rem; }
+            .admin-section { margin-top: 20px; }
+            .logos { flex-direction: column; text-align: center; padding: 12px; }
+            .col-4, .col-6, .col-2 { flex: none; width: 100%; margin-bottom: 8px; }
+            .col-6 h2 { font-size: 18px; margin: 8px 0; }
+            #participant-content, #request-form, #otp-form { max-width: 100% !important; margin: 0 10px; }
+            #login-form { max-width: 100% !important; margin: 0 10px; }
+        }
+        @media (max-width: 480px) {
+            .container { padding: 10px; }
+            .header h1 { font-size: 1.5rem; }
+            .content { padding: 16px; }
+            #admin-content { padding: 12px; }
+            .cert-table th, .cert-table td { padding: 8px 4px; }
+            .download-btn { padding: 6px 12px; font-size: 11px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .form-group { margin-bottom: 16px; }
+            .admin-section h3 { font-size: 20px; }
+            .col-6 h2 { font-size: 14px; }
+            .logos img { height: 40px !important; }
+            div[style*="display: flex; gap: 12px"] { flex-direction: column; gap: 8px; }
+        }
+        .logos { display: flex; align-items: center; margin-bottom: 10px; background: white; padding: 8px; border-radius: 8px; }
+        .col-4, .col-6, .col-2 { flex: 1; }
+        .col-4 { flex: 0 0 25%; }
+        .col-6 { flex: 0 0 50%; }
+        .col-2 { flex: 0 0 25%; }
+        .text-center { text-align: center; }
+        .align-middle { display: flex; align-items: center; justify-content: center; }
+        .header { text-align: center; margin-bottom: 15px; color: white; }
+        .header h1 { font-size: 1.4rem; margin-bottom: 5px; text-shadow: 0 4px 8px rgba(0,0,0,0.3); font-weight: 600; }
+        #admin-content { padding: 10px !important; }
+        #admin-content .container { padding: 5px !important; }
+        .tabs { display: flex; margin-bottom: 10px; background: rgba(255,255,255,0.15); border-radius: 16px; padding: 6px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+        .tab { flex: 1; padding: 16px 28px; background: transparent; cursor: pointer; text-align: center; color: white; border-radius: 12px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-weight: 600; font-size: 15px; }
+        .tab:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); }
+        .tab.active { background: white; color: #667eea; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+        .content { background: white; padding: 48px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+        .form-group { margin-bottom: 28px; }
+        label { display: block; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 15px; }
+        input, select { width: 100%; padding: 16px 20px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f9fafb; font-family: inherit; }
+        input:focus, select:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1); transform: translateY(-1px); }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 32px; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: inherit; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+        .message { padding: 20px 24px; margin: 24px 0; border-radius: 12px; font-weight: 500; }
+        .success { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border-left: 4px solid #10b981; }
+        .error { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b; border-left: 4px solid #ef4444; }
+        .hidden { display: none; }
+        .admin-section { margin-top: 32px; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 32px; }
+        .dashboard-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 32px; border-radius: 16px; border-left: 4px solid #667eea; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: transform 0.3s ease; }
+        .dashboard-card:hover { transform: translateY(-2px); }
+        .dashboard-card h3 { color: #374151; margin-bottom: 16px; font-size: 18px; font-weight: 600; }
+        .stats-number { font-size: 2.5rem; font-weight: 800; color: #667eea; }
+        .cert-table { width: 100%; border-collapse: collapse; margin-top: 24px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+        .cert-table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: left; font-weight: 600; font-size: 14px; }
+        .cert-table td { padding: 20px; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+        .cert-table tr:hover { background: #f9fafb; }
+        .download-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 10px 20px; border-radius: 8px; color: white; text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.3s ease; display: inline-block; }
+        .download-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+        small { color: #6b7280; font-size: 13px; }
+        
+        /* Toaster Notifications */
+        .toaster { position: fixed; top: 24px; right: 24px; z-index: 9999; }
+        .toast { background: white; border-left: 4px solid #10b981; padding: 20px 24px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); min-width: 320px; animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(20px); }
+        .toast.success { border-left-color: #10b981; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.info { border-left-color: #3b82f6; }
+        .toast-close { float: right; cursor: pointer; font-weight: bold; margin-left: 12px; color: #6b7280; }
+        @keyframes slideIn { from { transform: translateX(100%) scale(0.9); opacity: 0; } to { transform: translateX(0) scale(1); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translate(-50%, -40%) scale(0.9); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+        
+        /* Modern scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="toaster" id="toaster"></div>
+    <div class="container">
+        <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item">
+            <div class="container">
+                <div class="row logos">
+                    <div class="col-4">
+                        <a href="/" title="Home" rel="home">
+                            <img alt="ICTS Logo" src="https://register1.icts.res.in/sites/default/files/icts-logo.png" height="72px" width="auto">
+                        </a>
+                    </div>
+                    <div class="col-6 logo-tri" style="display: flex; align-items: center; justify-content: center;">
+                        <h2 style="color: #9a393a; font-size: 39px; font-weight: 700; margin: 0; text-align: center;">Digital Certificate Portal</h2>
+                    </div>
+                    <div class="col-2 text-center align-middle">
+                        <a href="https://www.tifr.res.in/" target="_blank" title="TIFR">
+                            <img alt="TIFR Logo" src="https://register1.icts.res.in/sites/default/files/tifr-logo.png" height="51px" width="auto">
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="header">
+            <!-- <h1>Digital Certificate Portal</h1> -->
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('participant')">Download Certificate</div>
+            <div class="tab" onclick="showTab('admin')">Admin Panel</div>
+
+        </div>
+
+<!-- Participant section -->
+        <div id="participant-content" class="content" style="max-width: 1050px;margin: 0 auto;padding-bottom: 15px;padding-left: 15px;padding-top: 15px;padding-right: 15px;">
+            <h2 style="color: #1f2937; margin-bottom: 24px; font-size: 24px; text-align: center; font-weight: 600;">🎓 Download Your Certificate</h2>
+            <div id="request-form" style="max-width: 1040px; margin: 0 auto; padding: 20px; background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%); border-radius: 16px; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.15); border: 1px solid rgba(102, 126, 234, 0.1);">
+                <div class="form-group">
+                    <label>Select Program:</label>
+                    <select id="programSelect" onchange="showProgramDetails()"><option value="">Select Program</option><option value="Dynamics and Evolution of RNA Functions">Dynamics and Evolution of RNA Functions (22 September 2025 to 03 October 2025)</option></select>
+                </div>
+                <div id="program-info" style="margin: 16px 0; padding: 16px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 8px; display: none; border: 1px solid #e0f2fe;">
+                    <div id="program-dates" style="color: #667eea; font-weight: bold; margin-bottom: 8px; font-size: 14px;"></div>
+                    <div id="program-note" style="color: #666; font-size: 13px;"></div>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 15px;">Full Name:</label>
+                        <input type="text" id="name" placeholder="Enter your full name" style="width: 100%; padding: 16px 20px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f9fafb; font-family: inherit;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 15px;">Email Address:</label>
+                        <input type="email" id="email" placeholder="Enter your email" style="width: 100%; padding: 16px 20px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f9fafb; font-family: inherit;">
+                    </div>
+                </div>
+                <button onclick="requestCertificate()" style="width: 100%; margin-top: 20px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">Request Certificate</button>
+            </div>
+
+            <div id="otp-form" class="hidden" style="max-width: 1040px; margin: 0 auto; padding: 20px; background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%); border-radius: 16px; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.15); border: 1px solid rgba(102, 126, 234, 0.1);">
+                <h3 style="color: #1f2937; margin-bottom: 20px; font-size: 20px; text-align: center;">Enter OTP</h3>
+                <div class="form-group">
+                    <label>OTP:</label>
+                    <input type="text" id="otp" placeholder="Enter 6-digit OTP">
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button onclick="verifyOTP()" style="flex: 1;">Get Certificate</button>
+                    <button id="resendBtn" onclick="resendOTP()" style="background: #3b82f6; flex: 1;">Resend OTP</button>
+                    <button onclick="showRequestForm()" style="background: #6b7280; flex: 1;">Back</button>
+                </div>
+                <div id="countdown" style="margin-top: 12px; color: #6b7280; font-size: 13px; text-align: center;"></div>
+            </div>
+            
+
+            
+
+
+            <div id="message"></div>
+            
+
+        </div>
+
+        <!-- Admin Section -->
+        <div id="admin-content" class="content hidden">
+            <div id="login-form" style="max-width: 700px; margin: 0 auto; padding: 20px; background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%); border-radius: 16px; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.15); border: 1px solid rgba(102, 126, 234, 0.1);">
+                <div style="text-align: center; margin-bottom: 18px;">
+                    <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 40px;">🔐</div>
+                    <h2 style="color: #1f2937; margin: 0; font-size: 25px; font-weight: 700;">Admin Login</h2>
+                </div>
+                <div style="position: relative; margin-bottom: 14px;">
+                    <input type="text" id="username" placeholder="Username" style="width: 100%; padding: 10px 12px 10px 35px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; background: #ffffff;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'">
+                    <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 17px;">👤</span>
+                </div>
+                <div style="position: relative; margin-bottom: 16px;">
+                    <input type="password" id="password" placeholder="Password" style="width: 100%; padding: 10px 12px 10px 35px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; background: #ffffff;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'">
+                    <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 17px;">🔒</span>
+                </div>
+                <button onclick="adminLogin()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">Login</button>
+                <div id="login-message" style="margin-top: 12px;"></div>
+            </div>
+
+            <div id="upload-form" class="hidden">
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>📊 Total Programs</h3>
+                        <div class="stats-number" id="totalPrograms">0</div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>🎓 Total Certificates</h3>
+                        <div class="stats-number" id="totalCertificates">0</div>
+                    </div>
+                </div>
+                
+                <div class="tabs" style="margin: 30px 0 20px 0; background: rgba(102, 126, 234, 0.1);">
+                    <div class="tab admin-only" onclick="showAdminTab('programs')" style="color: #667eea;">📋 Programs</div>
+                    <div class="tab active" onclick="showAdminTab('upload')" style="color: #667eea;">📤 Upload</div>
+                    <div class="tab" onclick="showAdminTab('view')" style="color: #667eea;">👁️ View</div>
+                    <div class="tab" onclick="showAdminTab('analytics')" style="color: #667eea;">📊 Analytics</div>
+                    <div class="tab super-admin-only" onclick="showAdminTab('users')" style="color: #667eea;">👥 Users</div>
+
+                    <div class="tab" onclick="showAdminTab('stats')" style="color: #667eea;">📈 Statistics</div>
+
+                </div>
+                
+                <div id="admin-upload" class="admin-section admin-only">
+                    <h3 style="color: #1f2937; margin-bottom: 28px; font-size: 28px; font-weight: 700;">📤 Upload New Certificates</h3>
+                    <div class="form-group">
+                        <label>Program Name:</label>
+                        <select id="adminProgramSelect">
+                            <option value="">Select Existing Program</option>
+                        </select>
+                        <input type="text" id="newProgramName" placeholder="Or enter new program name" style="margin-top: 5px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Participants CSV:</label>
+                        <input type="file" id="csvFile" accept=".csv">
+                        <small>CSV should have columns: name, email</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Certificate Files:</label>
+                        <input type="file" id="certificates" multiple accept=".pdf">
+                        <small>Select multiple PDF files OR</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Certificate Folder:</label>
+                        <input type="file" id="certificateFolder" webkitdirectory directory multiple>
+                        <small>Select entire folder containing certificates</small>
+                    </div>
+                    <button onclick="uploadCertificates()">Upload Certificates</button>
+                    <div id="upload-message"></div>
+                </div>
+
+                <div id="admin-programs" class="admin-section admin-only hidden">
+                    <h3 style="color: #333; margin-bottom: 25px; font-size: 24px;">📋 Manage Programs</h3>
+                    <div class="form-group">
+                        <label>Program Title:</label>
+                        <input type="text" id="programTitle" placeholder="Enter program name">
+                    </div>
+                    <div class="form-group">
+                        <label>Website Link:</label>
+                        <input type="url" id="programLink" placeholder="https://example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Program Duration:</label>
+                        <input type="text" id="programDates" placeholder="Jan 2024 - Mar 2024">
+                    </div>
+                    <div class="form-group">
+                        <label>Data Expiry Date & Time (optional):</label>
+                        <input type="datetime-local" id="programExpiry" placeholder="Leave blank for auto-expiry">
+                        <small>If not set, data expires 1 year after program end date</small>
+                    </div>
+                    <button onclick="addProgram()">Add Program</button>
+                    <button onclick="refreshAll()" style="background: #17a2b8; margin-left: 10px;">🔄 Refresh</button>
+                    
+                    <div style="margin: 20px 0; padding: 15px; background: #fff3cd; border-radius: 8px;">
+                        <h4>Certificate Management</h4>
+                        <div class="form-group">
+
+                            <button onclick="autoCleanup()" class="admin-only" style="background: #28a745; margin-right: 10px;">🤖 Auto Cleanup Expired</button>
+                            <button onclick="startAutoDelete()" class="admin-only" style="background: #007bff; margin-right: 10px;">▶️ Start Auto-Delete Service</button>
+                        </div>
+                        <div class="admin-only">
+                            <label>Or delete certificates created before:</label>
+                            <input type="date" id="cleanupDate" style="width: auto; margin-right: 10px;">
+                            <button onclick="cleanupByDate()" style="background: #dc3545;">🗑️ Manual Cleanup</button>
+                        </div>
+
+                    </div>
+                    
+                    <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <h4>Upload Programs CSV</h4>
+                        <div class="form-group">
+                            <label>CSV File (title, link, dates):</label>
+                            <input type="file" id="programsCsv" accept=".csv">
+                            <small>Format: program_name, duration, website_link</small>
+                        </div>
+                        <button onclick="uploadProgramsCsv()" style="background: #17a2b8;">📄 Upload CSV</button>
+                    </div>
+                    
+                    <div id="program-message"></div>
+                    <div id="programs-list"></div>
+                </div>
+
+                <div id="admin-view" class="admin-section hidden">
+                    <h3 style="color: #333; margin-bottom: 25px; font-size: 24px;">👁️ View Certificates</h3>
+                    <div class="form-group">
+                        <label>Select Program:</label>
+                        <select id="viewProgramSelect" onchange="loadCertificates()">
+                            <option value="">Select Program</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="userSearchBox" placeholder="🔍 Search by name or email..." oninput="searchUsers()" style="margin-top: 10px; max-width: 100%;">
+                    </div>
+                    <div id="certificates-list"></div>
+                </div>
+
+                <div id="admin-analytics" class="admin-section hidden">
+                    <h3 style="color: #333; margin-bottom: 25px; font-size: 24px;">📊 Analytics</h3>
+                    <div id="analytics-data"></div>
+                </div>
+
+                <div id="admin-users" class="admin-section super-admin-only hidden">
+                    <h3 style="color: #333; margin-bottom: 25px; font-size: 24px;">👥 User Management</h3>
+                    <div class="super-admin-only">
+                        <div class="form-group">
+                            <input type="text" id="newUsername" placeholder="Username">
+                            <input type="email" id="newUserEmail" placeholder="Email">
+                            <input type="password" id="newUserPassword" placeholder="Password">
+                            <select id="newUserRole">
+                                <option value="admin">Admin</option>
+                                <option value="viewer">Viewer</option>
+                                <option value="super_admin">Super Admin</option>
+                            </select>
+                            <button onclick="addUser()" style="background: #28a745;">Add User</button>
+                        </div>
+                    </div>
+                    <div id="users-list"></div>
+                    
+                    <!-- Activity Log for Super Admin -->
+                    <div class="super-admin-only" style="margin-top: 30px;">
+                        <h4>Activity Log</h4>
+                        <button onclick="loadActivityLog()" style="background: #17a2b8; margin-right: 10px;">Load Activity Log</button>
+                        <button onclick="loadUserContributions()" style="background: #28a745;">User Contributions</button>
+                        <div id="activity-log"></div>
+                        <div id="user-contributions"></div>
+                    </div>
+                </div>
+                
+                <div id="admin-stats" class="admin-section hidden">
+                    <h3 style="color: #333; margin-bottom: 25px; font-size: 24px;">📈 Statistics Dashboard</h3>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <h3>📥 Total Downloads</h3>
+                            <div class="stats-number" id="totalDownloads">0</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>👥 Active Users</h3>
+                            <div class="stats-number" id="activeUsers">0</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>🔥 Popular Program</h3>
+                            <div id="popularProgram">Loading...</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>📊 Today's Downloads</h3>
+                            <div class="stats-number" id="todayDownloads">0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Download History in Admin -->
+                    <div style="margin-top: 30px;">
+                        <h4>Download History</h4>
+                        <button onclick="loadAllDownloadHistory()" style="background: #17a2b8;">Load All Downloads</button>
+                        <div id="admin-download-history"></div>
+                    </div>
+                </div>
+                
+
+                
+
+                
+                <button onclick="logout()" class="btn-secondary" style="margin-top: 30px;">🚪 Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEmail = '';
+        let currentProgramName = '';
+        let currentName = '';
+        let isAdminLoggedIn = false;
+        let allPrograms = [];
+        let resendTimer = null;
+        let resendCountdown = 0;
+
+        // Load programs on page load
+        window.onload = function() {
+            loadPrograms();
+        };
+
+        function loadPrograms() {
+            fetch('/api/programs')
+                .then(response => response.json())
+                .then(programs => {
+                    allPrograms = programs;
+                    populatePrograms(programs);
+                })
+                .catch(() => {});
+        }
+        
+        function populatePrograms(programs) {
+            const selects = ['programSelect', 'viewProgramSelect', 'adminProgramSelect'];
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    select.innerHTML = '<option value="">Select Program</option>';
+                    programs.forEach(program => {
+                        const title = program.title || program;
+                        const dates = program.dates ? ` (${program.dates})` : '';
+                        select.innerHTML += `<option value="${title}">${title}${dates}</option>`;
+                    });
+                }
+            });
+        }
+
+        function searchPrograms() {
+            const searchTerm = document.getElementById('programSearch').value.toLowerCase();
+            const suggestions = document.getElementById('program-suggestions');
+            
+            if (searchTerm.length < 2) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            const filteredPrograms = allPrograms.filter(program => {
+                const title = program.title || program;
+                return title.toLowerCase().includes(searchTerm);
+            }).slice(0, 10); // Show max 10 results
+            
+            if (filteredPrograms.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            let html = '';
+            filteredPrograms.forEach(program => {
+                const title = program.title || program;
+                const dates = program.dates ? ` (${program.dates})` : '';
+                html += `<div onclick="selectProgram('${title}')" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'">
+                    <strong>${title}</strong>${dates}
+                </div>`;
+            });
+            
+            suggestions.innerHTML = html;
+            suggestions.style.display = 'block';
+        }
+        
+        function selectProgram(programName) {
+            document.getElementById('programSearch').value = programName;
+            document.getElementById('selectedProgram').value = programName;
+            document.getElementById('program-suggestions').style.display = 'none';
+            showProgramDetails();
+        }
+
+        function searchAdminPrograms() {
+            const searchTerm = document.getElementById('adminProgramSearch').value.toLowerCase();
+            const suggestions = document.getElementById('admin-program-suggestions');
+            
+            if (searchTerm.length < 2) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            const filteredPrograms = allPrograms.filter(program => {
+                const title = program.title || program;
+                return title.toLowerCase().includes(searchTerm);
+            }).slice(0, 10);
+            
+            if (filteredPrograms.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            let html = '';
+            filteredPrograms.forEach(program => {
+                const title = program.title || program;
+                const dates = program.dates ? ` (${program.dates})` : '';
+                html += `<div onclick="selectAdminProgram('${title}')" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'">
+                    <strong>${title}</strong>${dates}
+                </div>`;
+            });
+            
+            suggestions.innerHTML = html;
+            suggestions.style.display = 'block';
+        }
+        
+        function selectAdminProgram(programName) {
+            document.getElementById('adminProgramSearch').value = programName;
+            document.getElementById('selectedAdminProgram').value = programName;
+            document.getElementById('admin-program-suggestions').style.display = 'none';
+            loadCertificates();
+        }
+        
+        function searchUploadPrograms() {
+            showSuggestions('uploadProgramSearch', 'upload-program-suggestions', 'selectedUploadProgram');
+        }
+        
+        function showSuggestions(inputId, suggestionsId, hiddenId, callback) {
+            const searchTerm = document.getElementById(inputId).value.toLowerCase();
+            const suggestions = document.getElementById(suggestionsId);
+            
+            if (searchTerm.length < 2) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            const filteredPrograms = allPrograms.filter(program => {
+                const title = program.title || program;
+                return title.toLowerCase().includes(searchTerm);
+            }).slice(0, 10);
+            
+            if (filteredPrograms.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+            
+            let html = '';
+            filteredPrograms.forEach(program => {
+                const title = program.title || program;
+                const dates = program.dates ? ` (${program.dates})` : '';
+                html += `<div onclick="selectFromSuggestions('${title}', '${inputId}', '${hiddenId}', '${suggestionsId}')" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'">
+                    <strong>${title}</strong>${dates}
+                </div>`;
+            });
+            
+            suggestions.innerHTML = html;
+            suggestions.style.display = 'block';
+        }
+        
+        function selectFromSuggestions(programName, inputId, hiddenId, suggestionsId) {
+            document.getElementById(inputId).value = programName;
+            document.getElementById(hiddenId).value = programName;
+            document.getElementById(suggestionsId).style.display = 'none';
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.content').forEach(c => c.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + '-content').classList.remove('hidden');
+            
+            if (tab === 'participant') {
+                loadPrograms();
+            }
+        }
+
+
+
+        function showProgramDetails() {
+            const programName = document.getElementById('programSelect').value;
+            if (!programName) {
+                document.getElementById('program-info').style.display = 'none';
+                return;
+            }
+            
+            fetch(`/api/program-details/${encodeURIComponent(programName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('program-dates').textContent = data.dates ? `Duration: ${data.dates}` : '';
+                    
+                    const noteText = data.link ? 
+                        `📝 Note: Check your name in the program webpage participant list before downloading. Visit: <a href="${data.link}" target="_blank" style="color: #667eea; text-decoration: underline;">${data.link}</a>` :
+                        '📝 Note: Check your name in the program participant list before downloading.';
+                    
+                    document.getElementById('program-note').innerHTML = noteText;
+                    document.getElementById('program-info').style.display = 'block';
+                })
+                .catch(() => {
+                    document.getElementById('program-info').style.display = 'none';
+                });
+        }
+
+        function requestCertificate() {
+            const programName = document.getElementById('programSelect').value;
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const button = event.target;
+
+            if (!programName || !name || !email) {
+                showMessage('Please fill all fields', 'error');
+                return;
+            }
+
+            // Show loading state
+            button.disabled = true;
+            button.innerHTML = 'Sending OTP...';
+            button.style.opacity = '0.7';
+
+            currentEmail = email;
+            currentProgramName = programName;
+            currentName = name;
+
+            fetch('/api/request-certificate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ programName: programName, name: name, email: email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                } else {
+                    showMessage(data.message, 'success');
+                    showOTPForm();
+                    startResendTimer();
+                }
+            })
+            .catch(error => {
+                showMessage('Network error: ' + error.message, 'error');
+            })
+            .finally(() => {
+                // Reset button state
+                button.disabled = false;
+                button.innerHTML = 'Request Certificate';
+                button.style.opacity = '1';
+            });
+        }
+
+        function verifyOTP() {
+            const otp = document.getElementById('otp').value;
+
+            if (!otp) {
+                showMessage('Please enter OTP', 'error');
+                return;
+            }
+
+            fetch('/api/verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email: currentEmail, 
+                    otp: otp
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                } else if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Trigger download using the provided URL
+                    const link = document.createElement('a');
+                    link.href = data.downloadUrl;
+                    link.download = data.certificateName + ' - certificate.pdf';
+                    link.click();
+                    resetForm();
+                } else {
+                    showMessage('Unexpected response format', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Network error: ' + error.message, 'error');
+            });
+        }
+
+        function showOTPForm() {
+            document.getElementById('request-form').classList.add('hidden');
+            document.getElementById('otp-form').classList.remove('hidden');
+        }
+
+        function resendOTP() {
+            if (resendCountdown > 0) return;
+            
+            fetch('/api/request-certificate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ programName: currentProgramName, name: currentName, email: currentEmail })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                } else {
+                    showMessage(data.message, 'success');
+                    startResendTimer();
+                }
+            })
+            .catch(error => {
+                showMessage('Network error', 'error');
+            });
+        }
+        
+        function startResendTimer() {
+            resendCountdown = 60;
+            const resendBtn = document.getElementById('resendBtn');
+            const countdownDiv = document.getElementById('countdown');
+            
+            resendBtn.disabled = true;
+            resendBtn.style.opacity = '0.5';
+            
+            resendTimer = setInterval(() => {
+                resendCountdown--;
+                countdownDiv.textContent = `Resend available in ${resendCountdown}s`;
+                
+                if (resendCountdown <= 0) {
+                    clearInterval(resendTimer);
+                    resendBtn.disabled = false;
+                    resendBtn.style.opacity = '1';
+                    countdownDiv.textContent = '';
+                }
+            }, 1000);
+        }
+        
+        function showRequestForm() {
+            document.getElementById('request-form').classList.remove('hidden');
+            document.getElementById('otp-form').classList.add('hidden');
+            document.getElementById('otp').value = '';
+            
+            if (resendTimer) {
+                clearInterval(resendTimer);
+                resendTimer = null;
+            }
+            resendCountdown = 0;
+        }
+        
+        function resetForm() {
+            document.getElementById('request-form').classList.remove('hidden');
+            document.getElementById('otp-form').classList.add('hidden');
+            document.getElementById('programSelect').value = '';
+            document.getElementById('name').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('otp').value = '';
+            document.getElementById('program-info').style.display = 'none';
+            
+            if (resendTimer) {
+                clearInterval(resendTimer);
+                resendTimer = null;
+            }
+            resendCountdown = 0;
+        }
+        
+
+
+        function adminLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                showLoginMessage('Please enter username and password', 'error');
+                return;
+            }
+
+            fetch('/api/admin-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showLoginMessage(data.error, 'error');
+                } else {
+                    // Skip OTP for now
+                    completeAdminLogin();
+                }
+            })
+            .catch(error => {
+                showLoginMessage('Login failed', 'error');
+            });
+        }
+
+        function verifyAdminOTP() {
+            const otp = document.getElementById('adminOtp').value;
+
+            if (!otp) {
+                showLoginMessage('Please enter OTP', 'error');
+                return;
+            }
+
+            fetch('/api/admin-verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ otp })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showLoginMessage(data.error, 'error');
+                } else {
+                    completeAdminLogin();
+                }
+            })
+            .catch(error => {
+                showLoginMessage('OTP verification failed', 'error');
+            });
+        }
+
+        function showAdminOTPForm() {
+            document.getElementById('login-form').innerHTML = `
+                <h2 style="color: #333; margin-bottom: 10px; font-size: 28px; text-align: center;">🔐 Enter Admin OTP</h2>
+                <div class="form-group">
+                    <label>OTP:</label>
+                    <input type="text" id="adminOtp" placeholder="Enter 6-digit OTP">
+                </div>
+                <button onclick="verifyAdminOTP()">Verify OTP</button>
+                <button onclick="location.reload()" style="background: #6c757d; margin-left: 10px;">Back</button>
+                <div id="login-message"></div>
+            `;
+        }
+
+        let currentUserRole = 'admin';
+        let currentUsername = '';
+        
+        function completeAdminLogin() {
+            isAdminLoggedIn = true;
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('upload-form').classList.remove('hidden');
+            
+            // Get current user info
+            fetch('/api/admin/current-user')
+                .then(response => response.json())
+                .then(user => {
+                    currentUserRole = user.role;
+                    currentUsername = user.username;
+                    updateUIForRole();
+                    showToast(`Welcome ${user.username} (${user.role})!`, 'success');
+                })
+                .catch(() => {
+                    currentUserRole = 'admin';
+                    showToast('Admin login successful!', 'success');
+                });
+            
+            loadPrograms();
+            loadDashboardStats();
+        }
+        
+        function updateUIForRole() {
+            console.log('Updating UI for role:', currentUserRole);
+            
+            // Show all elements first
+            document.querySelectorAll('.super-admin-only, .admin-only').forEach(el => {
+                el.style.display = '';
+            });
+            
+            // Hide based on role
+            if (currentUserRole === 'viewer') {
+                // Viewer: Only view and analytics
+                document.querySelectorAll('.admin-only, .super-admin-only').forEach(el => {
+                    el.style.display = 'none';
+                });
+                // Switch to view tab for viewers
+                showAdminTab('view');
+            } else if (currentUserRole === 'admin') {
+                // Admin: Hide super admin features only
+                document.querySelectorAll('.super-admin-only').forEach(el => {
+                    el.style.display = 'none';
+                });
+            }
+            // Super admin sees everything (no hiding needed)
+        }
+
+        function uploadCertificates() {
+            const selectedProgram = document.getElementById('adminProgramSelect').value;
+            const newProgram = document.getElementById('newProgramName').value;
+            const programName = selectedProgram || newProgram;
+            const csvFile = document.getElementById('csvFile').files[0];
+            const certificates = document.getElementById('certificates').files;
+            const folderFiles = document.getElementById('certificateFolder').files;
+
+            if (!programName || !csvFile || (certificates.length === 0 && folderFiles.length === 0)) {
+                showUploadMessage('Please select/enter program name and select files', 'error');
+                return;
+            }
+
+            const totalFiles = certificates.length + Array.from(folderFiles).filter(f => f.name.toLowerCase().endsWith('.pdf')).length;
+            
+            if (totalFiles > 50) {
+                showUploadMessage(`Uploading ${totalFiles} files... This may take several minutes. Please wait.`, 'success');
+            }
+
+            const formData = new FormData();
+            formData.append('programName', programName);
+            formData.append('csvFile', csvFile);
+            
+            // Upload individual files
+            for (let i = 0; i < certificates.length; i++) {
+                formData.append('certificates', certificates[i]);
+            }
+            
+            // Upload folder files
+            for (let i = 0; i < folderFiles.length; i++) {
+                if (folderFiles[i].name.toLowerCase().endsWith('.pdf')) {
+                    formData.append('certificates', folderFiles[i]);
+                }
+            }
+
+            // Create XMLHttpRequest for better timeout control
+            const xhr = new XMLHttpRequest();
+            
+            xhr.timeout = 300000; // 5 minutes timeout
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (data.error) {
+                            showUploadMessage(data.error, 'error');
+                        } else {
+                            let message = data.message;
+                            if (data.warnings && data.warnings.length > 0) {
+                                message += '<br><small>Some issues found - check console for details</small>';
+                            }
+                            showUploadMessage(message, 'success');
+                            document.getElementById('adminProgramSelect').value = '';
+                            document.getElementById('newProgramName').value = '';
+                            document.getElementById('csvFile').value = '';
+                            document.getElementById('certificates').value = '';
+                            document.getElementById('certificateFolder').value = '';
+                            loadPrograms();
+                        }
+                    } catch (e) {
+                        showUploadMessage('Upload completed but response parsing failed', 'error');
+                    }
+                } else {
+                    showUploadMessage(`Upload failed with status: ${xhr.status}`, 'error');
+                }
+            };
+            
+            xhr.onerror = function() {
+                showUploadMessage('Network error: Unable to connect to server', 'error');
+            };
+            
+            xhr.ontimeout = function() {
+                showUploadMessage('Upload timeout - try with fewer files or check server', 'error');
+            };
+            
+            xhr.open('POST', '/api/upload-certificates');
+            xhr.send(formData);
+        }
+
+        function logout() {
+            isAdminLoggedIn = false;
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('upload-form').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            showToast('Logged out successfully', 'info');
+        }
+
+        function addProgram() {
+            const title = document.getElementById('programTitle').value;
+            const link = document.getElementById('programLink').value;
+            const dates = document.getElementById('programDates').value;
+            const expiry = document.getElementById('programExpiry').value;
+            
+            if (!title) {
+                showProgramMessage('Please enter program title', 'error');
+                return;
+            }
+            
+            fetch('/api/admin/add-program', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, link, dates, expiry })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showProgramMessage(data.error, 'error');
+                } else {
+                    showProgramMessage('Program added successfully', 'success');
+                    document.getElementById('programTitle').value = '';
+                    document.getElementById('programLink').value = '';
+                    document.getElementById('programDates').value = '';
+                    document.getElementById('programExpiry').value = '';
+                    loadProgramsList();
+                    loadPrograms();
+                }
+            })
+            .catch(() => showProgramMessage('Failed to add program', 'error'));
+        }
+        
+        let currentPage = 1;
+        let itemsPerPage = 25;
+        let allProgramsList = [];
+        
+        function loadProgramsList() {
+            fetch('/api/admin/programs')
+                .then(response => response.json())
+                .then(programs => {
+                    // Store all programs globally
+                    allPrograms = programs;
+                    // Sort programs descending
+                    allProgramsList = [...programs].sort((a, b) => (b.title || b).localeCompare(a.title || a));
+                    displayProgramsPage();
+                    
+                    // Update dashboard count
+                    const totalElement = document.getElementById('totalPrograms');
+                    if (totalElement) totalElement.textContent = programs.length;
+                })
+                .catch(() => {});
+        }
+        
+        function displayProgramsPage() {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pagePrograms = allProgramsList.slice(startIndex, endIndex);
+            const totalPages = Math.ceil(allProgramsList.length / itemsPerPage);
+            
+            let html = `<div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4>Programs (${allProgramsList.length}) - Page ${currentPage} of ${totalPages}</h4>
+                    <div>
+                        <select onchange="changeItemsPerPage(this.value)" style="width: auto; margin-right: 10px;">
+                            <option value="25" ${itemsPerPage === 25 ? 'selected' : ''}>25 per page</option>
+                            <option value="50" ${itemsPerPage === 50 ? 'selected' : ''}>50 per page</option>
+                            <option value="75" ${itemsPerPage === 75 ? 'selected' : ''}>75 per page</option>
+                            <option value="100" ${itemsPerPage === 100 ? 'selected' : ''}>100 per page</option>
+                        </select>
+                        <button onclick="deleteSelected()" style="background: #dc3545; padding: 8px 12px;">Delete Selected</button>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="programsListSearch" placeholder="🔍 Search programs..." style="width: 300px; margin-right: 10px; padding: 10px; background: white !important; color: black !important; border: 2px solid #ddd !important; font-size: 14px;">
+                    <button onclick="searchProgramsList()" style="background: #28a745; padding: 10px 15px; margin-right: 5px;">Search</button>
+                    <button onclick="clearSearch()" style="background: #6c757d; padding: 10px 15px;">Clear</button>
+                </div>
+            </div>`;
+            
+            html += '<table class="cert-table">';
+            html += '<tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th onclick="sortPrograms(\'name\')" style="cursor: pointer;">Program Name ↕</th><th onclick="sortPrograms(\'duration\')" style="cursor: pointer;">Duration ↕</th><th>Link</th><th onclick="sortPrograms(\'expiry\')" style="cursor: pointer;">Data Expires ↕</th><th>Action</th></tr>';
+            
+            pagePrograms.forEach(program => {
+                const safeId = program.title.replace(/[^a-zA-Z0-9]/g, '');
+                let expiryDate = 'Not set';
+                if (program.expiry_date) {
+                    const date = new Date(program.expiry_date);
+                    expiryDate = date.toLocaleDateString('en-GB') + ' ' + date.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}); // DD/MM/YYYY HH:MM format
+                }
+                const isExpired = program.expiry_date && new Date(program.expiry_date) <= new Date();
+                const expiryStyle = isExpired ? 'color: red; font-weight: bold;' : '';
+                
+                html += `<tr>
+                    <td><input type="checkbox" class="program-checkbox" value="${program.title}"></td>
+                    <td><strong>${program.title}</strong></td>
+                    <td>${program.dates || 'No duration'}</td>
+                    <td>${program.link ? `<a href="${program.link}" target="_blank">View</a>` : 'No link'}</td>
+                    <td style="${expiryStyle}">
+                        <div id="expiry-display-${program.id}">
+                            <span>${expiryDate}</span>
+                            <button onclick="showExpiryEdit(${program.id}, '${program.expiry_date || ''}')" style="background: #17a2b8; padding: 4px 8px; margin-left: 5px; font-size: 12px;">Edit</button>
+                        </div>
+                        <div id="expiry-edit-${program.id}" style="display: none;">
+                            <input type="datetime-local" id="expiry-input-${program.id}" style="width: 150px; padding: 4px; font-size: 12px;">
+                            <button onclick="saveExpiry(${program.id})" style="background: #28a745; padding: 4px 8px; margin-left: 2px; font-size: 12px;">Save</button>
+                            <button onclick="cancelExpiryEdit(${program.id})" style="background: #6c757d; padding: 4px 8px; margin-left: 2px; font-size: 12px;">Cancel</button>
+                        </div>
+                    </td>
+                    <td><button class="delete-btn download-btn" data-program="${program.title}" style="background: #dc3545;">Delete</button></td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            
+            // Pagination controls
+            if (totalPages > 1) {
+                html += '<div style="margin-top: 15px; text-align: center;">';
+                
+                if (currentPage > 1) {
+                    html += `<button onclick="changePage(${currentPage - 1})" style="margin: 0 5px;">Previous</button>`;
+                }
+                
+                for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+                    const active = i === currentPage ? 'background: #667eea;' : 'background: #6c757d;';
+                    html += `<button onclick="changePage(${i})" style="margin: 0 2px; ${active}">${i}</button>`;
+                }
+                
+                if (currentPage < totalPages) {
+                    html += `<button onclick="changePage(${currentPage + 1})" style="margin: 0 5px;">Next</button>`;
+                }
+                
+                html += '</div>';
+            }
+            
+            document.getElementById('programs-list').innerHTML = html;
+            
+            // Add event listeners for delete buttons
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const programName = this.getAttribute('data-program');
+                    deleteProgramSafe(programName);
+                });
+            });
+        }
+        
+        function changePage(page) {
+            currentPage = page;
+            displayProgramsPage();
+        }
+        
+        function changeItemsPerPage(value) {
+            itemsPerPage = parseInt(value);
+            currentPage = 1;
+            displayProgramsPage();
+        }
+        
+        function toggleAll(checkbox) {
+            const checkboxes = document.querySelectorAll('.program-checkbox');
+            checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        }
+        
+        function searchProgramsList() {
+            const searchTerm = document.getElementById('programsListSearch').value.toLowerCase();
+            console.log('Searching for:', searchTerm);
+            
+            if (!allPrograms || allPrograms.length === 0) {
+                console.log('No programs loaded');
+                return;
+            }
+            
+            if (searchTerm.length === 0) {
+                allProgramsList = [...allPrograms];
+            } else {
+                allProgramsList = allPrograms.filter(program => {
+                    const title = (program.title || '').toLowerCase();
+                    const dates = (program.dates || '').toLowerCase();
+                    const match = title.includes(searchTerm) || dates.includes(searchTerm);
+                    if (match) console.log('Match found:', program.title);
+                    return match;
+                });
+            }
+            
+            allProgramsList.sort((a, b) => (b.title || b).localeCompare(a.title || a));
+            currentPage = 1;
+            displayProgramsPage();
+            console.log('Filtered results:', allProgramsList.length);
+        }
+        
+        let sortOrder = { name: 'desc', duration: 'asc', expiry: 'asc' };
+        
+        function sortPrograms(type) {
+            if (type === 'name') {
+                if (sortOrder.name === 'desc') {
+                    allProgramsList.sort((a, b) => (a.title || a).localeCompare(b.title || b));
+                    sortOrder.name = 'asc';
+                } else {
+                    allProgramsList.sort((a, b) => (b.title || b).localeCompare(a.title || a));
+                    sortOrder.name = 'desc';
+                }
+            } else if (type === 'duration') {
+                if (sortOrder.duration === 'asc') {
+                    allProgramsList.sort((a, b) => (b.dates || '').localeCompare(a.dates || ''));
+                    sortOrder.duration = 'desc';
+                } else {
+                    allProgramsList.sort((a, b) => (a.dates || '').localeCompare(b.dates || ''));
+                    sortOrder.duration = 'asc';
+                }
+            } else if (type === 'expiry') {
+                if (sortOrder.expiry === 'asc') {
+                    allProgramsList.sort((a, b) => {
+                        const dateA = a.expiry_date ? new Date(a.expiry_date) : new Date('9999-12-31');
+                        const dateB = b.expiry_date ? new Date(b.expiry_date) : new Date('9999-12-31');
+                        return dateB - dateA;
+                    });
+                    sortOrder.expiry = 'desc';
+                } else {
+                    allProgramsList.sort((a, b) => {
+                        const dateA = a.expiry_date ? new Date(a.expiry_date) : new Date('9999-12-31');
+                        const dateB = b.expiry_date ? new Date(b.expiry_date) : new Date('9999-12-31');
+                        return dateA - dateB;
+                    });
+                    sortOrder.expiry = 'asc';
+                }
+            }
+            displayProgramsPage();
+        }
+        
+        function showExpiryEdit(programId, currentDate) {
+            document.getElementById(`expiry-display-${programId}`).style.display = 'none';
+            document.getElementById(`expiry-edit-${programId}`).style.display = 'block';
+            
+            let currentDateTime = '';
+            if (currentDate) {
+                const date = new Date(currentDate);
+                currentDateTime = date.getFullYear() + '-' + 
+                    String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(date.getDate()).padStart(2, '0') + 'T' + 
+                    String(date.getHours()).padStart(2, '0') + ':' + 
+                    String(date.getMinutes()).padStart(2, '0');
+            }
+            document.getElementById(`expiry-input-${programId}`).value = currentDateTime;
+        }
+        
+        function saveExpiry(programId) {
+            const newDateTime = document.getElementById(`expiry-input-${programId}`).value;
+            
+            fetch('/api/admin/update-expiry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ programId, expiryDate: newDateTime })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast('Expiry date updated', 'success');
+                    loadProgramsList();
+                }
+            })
+            .catch(() => showToast('Update failed', 'error'));
+        }
+        
+        function cancelExpiryEdit(programId) {
+            document.getElementById(`expiry-display-${programId}`).style.display = 'block';
+            document.getElementById(`expiry-edit-${programId}`).style.display = 'none';
+        }
+        
+        function clearSearch() {
+            document.getElementById('programsListSearch').value = '';
+            allProgramsList = [...allPrograms].sort((a, b) => (b.title || b).localeCompare(a.title || a));
+            currentPage = 1;
+            displayProgramsPage();
+        }
+        
+        function deleteSelected() {
+            const selected = Array.from(document.querySelectorAll('.program-checkbox:checked')).map(cb => cb.value);
+            
+            if (selected.length === 0) {
+                showProgramMessage('Please select programs to delete', 'error');
+                return;
+            }
+            
+            if (!confirm(`Delete ${selected.length} selected programs?`)) return;
+            
+            let deleted = 0;
+            const deletePromises = selected.map(async (programName) => {
+                try {
+                    const response = await fetch(`/api/admin/program/${encodeURIComponent(programName)}`, { method: 'DELETE' });
+                    const data = await response.json();
+                    if (!data.error) deleted++;
+                    return data;
+                } catch (err) {
+                    console.error(`Failed to delete ${programName}:`, err);
+                    return { error: 'Network error' };
+                }
+            });
+            
+            Promise.allSettled(deletePromises)
+            .then(() => {
+                showProgramMessage(`Deleted ${selected.length} programs`, 'success');
+                loadProgramsList();
+                loadPrograms();
+            })
+            .catch(() => showProgramMessage('Delete failed', 'error'));
+        }
+        
+
+        function uploadProgramsCsv() {
+            const fileInput = document.getElementById('programsCsv');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showProgramMessage('Please select a CSV file', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('programsCsv', file);
+            
+            showProgramMessage('Uploading programs...', 'success');
+            
+            fetch('/api/admin/upload-programs-csv', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showProgramMessage(data.error, 'error');
+                } else {
+                    showProgramMessage(data.message, 'success');
+                    fileInput.value = '';
+                    loadProgramsList();
+                    loadPrograms(); // Refresh dropdown
+                }
+            })
+            .catch(() => showProgramMessage('Upload failed', 'error'));
+        }
+        
+        function startAutoDelete() {
+            if (!confirm('Start continuous auto-delete service? This will delete expired files every 5 minutes automatically.')) return;
+            
+            showToast('Starting auto-delete service...', 'info');
+            showToast('Run: start-auto-delete.bat in a separate command window', 'info', 8000);
+        }
+        
+        function autoCleanup() {
+            if (!confirm('Auto-cleanup all expired programs based on their expiry dates?')) return;
+            
+            showProgramMessage('Auto-cleaning expired programs...', 'success');
+            
+            fetch('/api/admin/auto-cleanup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showProgramMessage(data.error, 'error');
+                } else {
+                    showProgramMessage(data.message, 'success');
+                    loadDashboardStats();
+                }
+            })
+            .catch(() => showProgramMessage('Auto cleanup failed', 'error'));
+        }
+        
+        function cleanupByDate() {
+            const cleanupDate = document.getElementById('cleanupDate').value;
+            
+            if (!cleanupDate) {
+                showProgramMessage('Please select a date', 'error');
+                return;
+            }
+            
+            if (!confirm(`Delete all certificates created before ${cleanupDate}?`)) return;
+            
+            showProgramMessage('Cleaning up data...', 'success');
+            
+            fetch('/api/admin/cleanup-by-date', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: cleanupDate })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showProgramMessage(data.error, 'error');
+                } else {
+                    showProgramMessage(data.message, 'success');
+                    loadDashboardStats();
+                }
+            })
+            .catch(() => showProgramMessage('Cleanup failed', 'error'));
+        }
+        
+        function refreshAll() {
+            showProgramMessage('Refreshing...', 'success');
+            // Force clear all caches
+            allPrograms = [];
+            allProgramsList = [];
+            
+            // Add cache buster to API call
+            fetch(`/api/programs?t=${Date.now()}`)
+                .then(response => response.json())
+                .then(programs => {
+                    allPrograms = programs;
+                    allProgramsList = programs.sort((a, b) => (b.title || b).localeCompare(a.title || a));
+                    displayProgramsPage();
+                    loadDashboardStats();
+                    showProgramMessage('Refreshed successfully', 'success');
+                })
+                .catch(() => showProgramMessage('Refresh failed', 'error'));
+        }
+        
+        function showProgramMessage(message, type) {
+            showToast(message, type);
+        }
+
+        function showAdminTab(tab) {
+            document.querySelectorAll('.admin-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('admin-' + tab).classList.remove('hidden');
+            
+            document.querySelectorAll('#upload-form .tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'view') loadPrograms();
+            if (tab === 'analytics') loadAnalytics();
+            if (tab === 'programs') loadProgramsList();
+            if (tab === 'users') loadUsers();
+            if (tab === 'stats') loadStatistics();
+
+        }
+
+        function loadDashboardStats() {
+            fetch('/api/programs')
+                .then(response => response.json())
+                .then(programs => {
+                    document.getElementById('totalPrograms').textContent = programs.length;
+                })
+                .catch(() => {});
+            
+            fetch('/api/admin/analytics')
+                .then(response => response.json())
+                .then(data => {
+                    const total = data.reduce((sum, p) => sum + p.total_certificates, 0);
+                    document.getElementById('totalCertificates').textContent = total;
+                })
+                .catch(() => {});
+        }
+
+        function loadAnalytics() {
+            fetch('/api/admin/analytics')
+                .then(response => response.json())
+                .then(data => {
+                    let html = '<table class="cert-table">';
+                    html += '<tr><th>Program</th><th>Certificates</th><th>Actions</th></tr>';
+                    data.forEach(program => {
+                        html += `<tr>
+                            <td><strong>${program.program_name}</strong></td>
+                            <td>${program.total_certificates}</td>
+                            <td>
+                                <a href="/api/admin/export/${encodeURIComponent(program.program_name)}" class="download-btn">📥 Export</a>
+                                <button onclick="deleteProgram('${program.program_name}')" class="download-btn" style="background: #dc3545; margin-left: 5px;">🗑️ Delete</button>
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('analytics-data').innerHTML = html;
+                })
+                .catch(err => {
+                    document.getElementById('analytics-data').innerHTML = '<p>Error loading analytics</p>';
+                });
+        }
+
+
+
+        function deleteProgramSafe(programName) {
+            console.log('Attempting to delete:', programName);
+            
+            if (!confirm(`Delete program "${programName}"?`)) return;
+            
+            fetch('/api/admin/delete-program', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ programName: programName })
+            })
+            .then(response => {
+                console.log('Delete response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Delete response:', data);
+                if (data.error) {
+                    showProgramMessage(data.error, 'error');
+                } else {
+                    showProgramMessage(data.message, 'success');
+                    // Force refresh after delete
+                    refreshAll();
+                }
+            })
+            .catch(err => {
+                console.error('Delete error:', err);
+                showProgramMessage('Delete failed', 'error');
+            });
+        }
+        
+        function deleteProgram(programName) {
+            deleteProgramSafe(programName);
+        }
+
+        let allCertificates = [];
+        
+        function loadCertificates() {
+            const program = document.getElementById('viewProgramSelect').value;
+            if (!program) {
+                document.getElementById('certificates-list').innerHTML = '';
+                document.getElementById('userSearchBox').value = '';
+                return;
+            }
+
+            fetch(`/api/certificates/${program}`)
+                .then(response => response.json())
+                .then(certificates => {
+                    allCertificates = certificates;
+                    displayCertificates(certificates, program);
+                    document.getElementById('userSearchBox').value = '';
+                })
+                .catch(() => {
+                    document.getElementById('certificates-list').innerHTML = '<p>Error loading certificates</p>';
+                });
+        }
+        
+        function displayCertificates(certificates, program) {
+            let html = `<h3 style="color: #333; margin: 20px 0; font-size: 20px;">📋 ${program} - ${certificates.length} Certificates</h3><table class="cert-table">`;
+            html += '<tr><th>👤 Name</th><th>📧 Email</th><th>📅 Date</th><th>⬇️ Action</th></tr>';
+            
+            certificates.forEach(cert => {
+                const date = new Date(cert.created_at).toLocaleDateString();
+                html += `<tr>`;
+                html += `<td><strong>${cert.name}</strong></td>`;
+                html += `<td>${cert.email}</td>`;
+                html += `<td>${date}</td>`;
+                html += `<td><a href="#" onclick="adminDownloadCert(${cert.id})" class="download-btn">📥 Download</a></td>`;
+                html += `</tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('certificates-list').innerHTML = html;
+        }
+        
+        function searchUsers() {
+            const searchTerm = document.getElementById('userSearchBox').value.toLowerCase();
+            
+            if (searchTerm.length < 2) {
+                document.getElementById('certificates-list').innerHTML = '';
+                return;
+            }
+            
+            fetch(`/api/admin/search?q=${encodeURIComponent(searchTerm)}`)
+                .then(response => response.json())
+                .then(certificates => {
+                    let html = `<h3>Search Results for "${searchTerm}" (${certificates.length})</h3>`;
+                    if (certificates.length > 0) {
+                        html += '<table class="cert-table">';
+                        html += '<tr><th>Name</th><th>Email</th><th>Program</th><th>Date</th><th>Action</th></tr>';
+                        certificates.forEach(cert => {
+                            const date = new Date(cert.created_at).toLocaleDateString();
+                            html += `<tr>
+                                <td><strong>${cert.name}</strong></td>
+                                <td>${cert.email}</td>
+                                <td>${cert.program_name}</td>
+                                <td>${date}</td>
+                                <td><a href="#" onclick="adminDownloadCert(${cert.id})" class="download-btn">Download</a></td>
+                            </tr>`;
+                        });
+                        html += '</table>';
+                    } else {
+                        html += '<p>No certificates found</p>';
+                    }
+                    document.getElementById('certificates-list').innerHTML = html;
+                })
+                .catch(() => {
+                    document.getElementById('certificates-list').innerHTML = '<p>Search failed</p>';
+                });
+        }
+
+        function adminDownloadCert(certId) {
+            event.preventDefault();
+            window.open(`/api/admin/download/${certId}`, '_blank');
+            return false;
+        }
+
+        function showToast(message, type = 'success', duration = 4000) {
+            const toaster = document.getElementById('toaster');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            toast.innerHTML = `
+                ${icon} ${message}
+                <span class="toast-close" onclick="this.parentElement.remove()">&times;</span>
+            `;
+            
+            toaster.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, duration);
+        }
+        
+        function showMessage(message, type) {
+            showToast(message, type);
+        }
+
+        function showLoginMessage(message, type) {
+            showToast(message, type);
+        }
+
+        function showUploadMessage(message, type) {
+            showToast(message, type);
+        }
+        
+
+        
+        // Admin Download History
+        function loadAllDownloadHistory() {
+            fetch('/api/admin/all-downloads')
+                .then(response => response.json())
+                .then(history => {
+                    let html = `<h4>All Downloads (${history.length})</h4>`;
+                    if (history.length > 0) {
+                        html += '<table class="cert-table">';
+                        html += '<tr><th>Email</th><th>Program</th><th>Format</th><th>Downloaded</th><th>IP</th></tr>';
+                        history.forEach(item => {
+                            const date = new Date(item.downloaded_at).toLocaleDateString();
+                            html += `<tr>
+                                <td>${item.email}</td>
+                                <td>${item.program_name}</td>
+                                <td>${item.format.toUpperCase()}</td>
+                                <td>${date}</td>
+                                <td>${item.ip_address || 'N/A'}</td>
+                            </tr>`;
+                        });
+                        html += '</table>';
+                    } else {
+                        html += '<p>No download history found.</p>';
+                    }
+                    document.getElementById('admin-download-history').innerHTML = html;
+                })
+                .catch(() => showToast('Failed to load history', 'error'));
+        }
+        
+        // User Management
+        function addUser() {
+            const username = document.getElementById('newUsername').value;
+            const email = document.getElementById('newUserEmail').value;
+            const password = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+            
+            if (!username || !email || !password) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+            
+            fetch('/api/admin/add-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password, role })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast('User added successfully', 'success');
+                    document.getElementById('newUsername').value = '';
+                    document.getElementById('newUserEmail').value = '';
+                    document.getElementById('newUserPassword').value = '';
+                    loadUsers();
+                }
+            })
+            .catch(() => showToast('Failed to add user', 'error'));
+        }
+        
+        function loadUsers() {
+            fetch('/api/admin/users')
+                .then(response => response.json())
+                .then(users => {
+                    let html = '<table class="cert-table">';
+                    html += '<tr><th>Username</th><th>Email</th><th>Role</th><th>Created</th><th>Action</th></tr>';
+                    users.forEach(user => {
+                        const date = new Date(user.created_at).toLocaleDateString();
+                        html += `<tr>
+                            <td>${user.username}</td>
+                            <td>${user.email}</td>
+                            <td>${user.role}</td>
+                            <td>${date}</td>
+                            <td>
+                                <div id="user-display-${user.id}">
+                                    <button onclick="showUserEdit(${user.id}, '${user.username}', '${user.email}', '${user.role}')" class="download-btn" style="background: #17a2b8; margin-right: 5px;">Edit</button>
+                                    <button onclick="deleteUser(${user.id})" class="download-btn" style="background: #dc3545;">Delete</button>
+                                </div>
+                                <div id="user-edit-${user.id}" style="display: none;">
+                                    <input type="text" id="edit-username-${user.id}" placeholder="Username" style="width: 80px; margin: 2px; padding: 4px; font-size: 12px;">
+                                    <input type="email" id="edit-email-${user.id}" placeholder="Email" style="width: 120px; margin: 2px; padding: 4px; font-size: 12px;">
+                                    <select id="edit-role-${user.id}" style="width: 80px; margin: 2px; padding: 4px; font-size: 12px;">
+                                        <option value="admin">Admin</option>
+                                        <option value="viewer">Viewer</option>
+                                        <option value="super_admin">Super Admin</option>
+                                    </select><br>
+                                    <button onclick="saveUser(${user.id})" style="background: #28a745; padding: 4px 8px; margin: 2px; font-size: 12px;">Save</button>
+                                    <button onclick="cancelUserEdit(${user.id})" style="background: #6c757d; padding: 4px 8px; margin: 2px; font-size: 12px;">Cancel</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('users-list').innerHTML = html;
+                })
+                .catch(() => showToast('Failed to load users', 'error'));
+        }
+        
+        function showUserEdit(id, username, email, role) {
+            document.getElementById(`user-display-${id}`).style.display = 'none';
+            document.getElementById(`user-edit-${id}`).style.display = 'block';
+            
+            document.getElementById(`edit-username-${id}`).value = username;
+            document.getElementById(`edit-email-${id}`).value = email;
+            document.getElementById(`edit-role-${id}`).value = role;
+        }
+        
+        function saveUser(id) {
+            const username = document.getElementById(`edit-username-${id}`).value;
+            const email = document.getElementById(`edit-email-${id}`).value;
+            const role = document.getElementById(`edit-role-${id}`).value;
+            
+            if (!username || !email) {
+                showToast('Username and email are required', 'error');
+                return;
+            }
+            
+            fetch(`/api/admin/edit-user/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, role })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast('User updated successfully', 'success');
+                    loadUsers();
+                }
+            })
+            .catch(() => showToast('Failed to update user', 'error'));
+        }
+        
+        function cancelUserEdit(id) {
+            document.getElementById(`user-display-${id}`).style.display = 'block';
+            document.getElementById(`user-edit-${id}`).style.display = 'none';
+        }
+        
+        function deleteUser(userId) {
+            if (!confirm('Delete this user?')) return;
+            
+            fetch(`/api/admin/delete-user/${userId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    showToast(data.message, 'success');
+                    loadUsers();
+                })
+                .catch(() => showToast('Failed to delete user', 'error'));
+        }
+        
+        // Statistics Dashboard
+        function loadStatistics() {
+            fetch('/api/admin/statistics')
+                .then(response => response.json())
+                .then(stats => {
+                    document.getElementById('totalDownloads').textContent = stats.totalDownloads;
+                    document.getElementById('activeUsers').textContent = stats.activeUsers;
+                    document.getElementById('popularProgram').textContent = stats.popularProgram || 'None';
+                    document.getElementById('todayDownloads').textContent = stats.todayDownloads;
+                })
+                .catch(() => showToast('Failed to load statistics', 'error'));
+        }
+        
+
+        
+        // Load User Contributions
+        function loadUserContributions() {
+            fetch('/api/admin/user-contributions')
+                .then(response => response.json())
+                .then(stats => {
+                    let html = '<h4>User Contributions Summary</h4>';
+                    const users = Object.keys(stats);
+                    
+                    if (users.length > 0) {
+                        html += '<table class="cert-table">';
+                        html += '<tr><th>User</th><th>Programs Created</th><th>Program Names</th><th>Certificates Uploaded</th></tr>';
+                        
+                        users.forEach(user => {
+                            const userStat = stats[user];
+                            const programCount = userStat.programs.length;
+                            const programNames = userStat.programNames.join(', ') || 'None';
+                            
+                            html += `<tr>
+                                <td><strong>${user}</strong></td>
+                                <td>${programCount}</td>
+                                <td style="max-width: 300px; word-wrap: break-word;">${programNames}</td>
+                                <td>${userStat.certificates}</td>
+                            </tr>`;
+                        });
+                        html += '</table>';
+                    } else {
+                        html += '<p>No user contribution data found.</p>';
+                    }
+                    
+                    document.getElementById('user-contributions').innerHTML = html;
+                })
+                .catch(() => showToast('Failed to load user contributions', 'error'));
+        }
+        
+        // Load Activity Log
+        function loadActivityLog() {
+            fetch('/api/admin/activity-log')
+                .then(response => response.json())
+                .then(activities => {
+                    let html = `<h4>Recent Activities (${activities.length})</h4>`;
+                    if (activities.length > 0) {
+                        html += '<table class="cert-table">';
+                        html += '<tr><th>User</th><th>Action</th><th>Details</th><th>Time</th><th>IP</th></tr>';
+                        activities.forEach(activity => {
+                            const date = new Date(activity.created_at).toLocaleString();
+                            html += `<tr>
+                                <td>${activity.username}</td>
+                                <td>${activity.action}</td>
+                                <td>${activity.details || 'N/A'}</td>
+                                <td>${date}</td>
+                                <td>${activity.ip_address || 'N/A'}</td>
+                            </tr>`;
+                        });
+                        html += '</table>';
+                    } else {
+                        html += '<p>No activities found.</p>';
+                    }
+                    document.getElementById('activity-log').innerHTML = html;
+                })
+                .catch(() => showToast('Failed to load activity log', 'error'));
+        }
+        
+
+        
+
+    </script>
+</body>
+</html>
