@@ -2,11 +2,11 @@
   "name": "certificate-download",
   "version": "2.0.0",
   "description": "Modern certificate download system",
-  "main": "mysql-server.js",
+  "main": "postgres-server.js",
   "scripts": {
-    "start": "node mysql-server.js",
-    "dev": "nodemon mysql-server.js",
-    "prod": "NODE_ENV=production node mysql-server.js",
+    "start": "node postgres-server.js",
+    "dev": "nodemon postgres-server.js",
+    "prod": "NODE_ENV=production node postgres-server.js",
     "build": "echo 'No build step required'"
   },
   "dependencies": {
