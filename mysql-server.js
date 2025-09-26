@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const multer = require('multer');
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -22,6 +22,11 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(express.static('public'));
 
+// Serve index.html for root route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -30,26 +35,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// MySQL connection
-const db = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'certificates_db',
-  waitForConnections: true,
-  connectionLimit: 10
+// PostgreSQL connection
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Initialize database
 async function initDB() {
   try {
-    await db.execute(`CREATE TABLE IF NOT EXISTS admins (
+    await db.query(`CREATE TABLE IF NOT EXISTS admins (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(255) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL
     )`);
     
-    await db.execute(`CREATE TABLE IF NOT EXISTS certificates (
+    await db.query(`CREATE TABLE IF NOT EXISTS certificates (
       id INT AUTO_INCREMENT PRIMARY KEY,
       program_name VARCHAR(255) NOT NULL,
       name VARCHAR(255) NOT NULL,
@@ -64,12 +65,12 @@ async function initDB() {
     
     // Add new columns to existing certificates
     try {
-      await db.execute(`ALTER TABLE certificates ADD COLUMN certificate_id VARCHAR(36) UNIQUE`);
-      await db.execute(`ALTER TABLE certificates ADD COLUMN verification_code VARCHAR(255)`);
-      await db.execute(`ALTER TABLE certificates ADD COLUMN uploaded_by VARCHAR(255)`);
+      await db.query(`ALTER TABLE certificates ADD COLUMN certificate_id VARCHAR(36) UNIQUE`);
+      await db.query(`ALTER TABLE certificates ADD COLUMN verification_code VARCHAR(255)`);
+      await db.query(`ALTER TABLE certificates ADD COLUMN uploaded_by VARCHAR(255)`);
     } catch (e) {}
     
-    await db.execute(`CREATE TABLE IF NOT EXISTS otps (
+    await db.query(`CREATE TABLE IF NOT EXISTS otps (
       id INT AUTO_INCREMENT PRIMARY KEY,
       email VARCHAR(255) NOT NULL,
       otp VARCHAR(6) NOT NULL,
@@ -77,13 +78,13 @@ async function initDB() {
       verified BOOLEAN DEFAULT FALSE
     )`);
     
-    await db.execute(`CREATE TABLE IF NOT EXISTS admin_sessions (
+    await db.query(`CREATE TABLE IF NOT EXISTS admin_sessions (
       id INT AUTO_INCREMENT PRIMARY KEY,
       session_token VARCHAR(255) NOT NULL,
       expires_at DATETIME NOT NULL
     )`);
     
-    await db.execute(`CREATE TABLE IF NOT EXISTS programs (
+    await db.query(`CREATE TABLE IF NOT EXISTS programs (
       id INT AUTO_INCREMENT PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
       link VARCHAR(500),
@@ -95,20 +96,20 @@ async function initDB() {
     
     // Add created_by column to existing programs
     try {
-      await db.execute(`ALTER TABLE programs ADD COLUMN created_by VARCHAR(255)`);
+      await db.query(`ALTER TABLE programs ADD COLUMN created_by VARCHAR(255)`);
     } catch (e) {
       // Column already exists
     }
     
     // Add expiry_date column if it doesn't exist
     try {
-      await db.execute(`ALTER TABLE programs ADD COLUMN expiry_date DATETIME`);
+      await db.query(`ALTER TABLE programs ADD COLUMN expiry_date DATETIME`);
     } catch (e) {
       // Column already exists
     }
     
     // Download history table
-    await db.execute(`CREATE TABLE IF NOT EXISTS download_history (
+    await db.query(`CREATE TABLE IF NOT EXISTS download_history (
       id INT AUTO_INCREMENT PRIMARY KEY,
       email VARCHAR(255) NOT NULL,
       program_name VARCHAR(255) NOT NULL,
@@ -120,7 +121,7 @@ async function initDB() {
     )`);
     
     // Admin users table
-    await db.execute(`CREATE TABLE IF NOT EXISTS admin_users (
+    await db.query(`CREATE TABLE IF NOT EXISTS admin_users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(255) UNIQUE NOT NULL,
       email VARCHAR(255) NOT NULL,
@@ -132,11 +133,11 @@ async function initDB() {
     
     // Add created_by column to existing admin_users table
     try {
-      await db.execute(`ALTER TABLE admin_users ADD COLUMN created_by INT`);
+      await db.query(`ALTER TABLE admin_users ADD COLUMN created_by INT`);
     } catch (e) {}
     
     // Activity log table
-    await db.execute(`CREATE TABLE IF NOT EXISTS activity_log (
+    await db.query(`CREATE TABLE IF NOT EXISTS activity_log (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT,
       username VARCHAR(255),
@@ -148,7 +149,7 @@ async function initDB() {
     
     // Create super admin if not exists
     try {
-      await db.execute(`INSERT INTO admin_users (username, password, email, role) VALUES ('superadmin', 'super123', 'super@admin.com', 'super_admin')`);
+      await db.query(`INSERT INTO admin_users (username, password, email, role) VALUES ('superadmin', 'super123', 'super@admin.com', 'super_admin')`);
       console.log('✅ Super Admin created: superadmin/super123');
     } catch (e) {}
     
@@ -156,11 +157,11 @@ async function initDB() {
     
     // Insert admin user with email
     try {
-      await db.execute(`ALTER TABLE admins ADD COLUMN email VARCHAR(255)`);
+      await db.query(`ALTER TABLE admins ADD COLUMN email VARCHAR(255)`);
     } catch (e) {}
     
     try {
-      await db.execute(`INSERT INTO admins (username, password, email) VALUES ('admin', 'admin123', 'admin@example.com')`);
+      await db.query(`INSERT INTO admins (username, password, email) VALUES ('admin', 'admin123', 'admin@example.com')`);
       console.log('✅ Admin user created');
     } catch (e) {
       console.log('ℹ️ Admin user already exists');
@@ -203,12 +204,12 @@ app.post('/api/admin-login', async (req, res) => {
     let admin = null;
     
     try {
-      const [newRows] = await db.execute('SELECT * FROM admin_users WHERE username = ? AND password = ?', [username, password]);
+      const [newRows] = await db.query('SELECT * FROM admin_users WHERE username = ? AND password = ?', [username, password]);
       if (newRows.length > 0) admin = newRows[0];
     } catch (e) {}
     
     if (!admin) {
-      const [oldRows] = await db.execute('SELECT * FROM admins WHERE username = ? AND password = ?', [username, password]);
+      const [oldRows] = await db.query('SELECT * FROM admins WHERE username = ? AND password = ?', [username, password]);
       if (oldRows.length > 0) {
         admin = { ...oldRows[0], role: 'admin' }; // Default role for old admin
       }
@@ -241,7 +242,7 @@ app.post('/api/admin-login', async (req, res) => {
 // Activity logging function
 async function logActivity(userId, username, action, details, ip) {
   try {
-    await db.execute('INSERT INTO activity_log (user_id, username, action, details, ip_address) VALUES (?, ?, ?, ?, ?)',
+    await db.query('INSERT INTO activity_log (user_id, username, action, details, ip_address) VALUES (?, ?, ?, ?, ?)',
       [userId, username, action, details, ip]);
   } catch (e) {
     console.log('Activity log failed:', e.message);
@@ -269,10 +270,10 @@ app.post('/api/admin-verify-otp', async (req, res) => {
   const { otp } = req.body;
   
   try {
-    const [otpRows] = await db.execute('SELECT * FROM otps WHERE otp = ? AND expires_at > NOW() AND verified = FALSE', [otp]);
+    const [otpRows] = await db.query('SELECT * FROM otps WHERE otp = ? AND expires_at > NOW() AND verified = FALSE', [otp]);
     if (otpRows.length === 0) return res.status(400).json({ error: 'Invalid or expired OTP' });
     
-    await db.execute('UPDATE otps SET verified = TRUE WHERE id = ?', [otpRows[0].id]);
+    await db.query('UPDATE otps SET verified = TRUE WHERE id = ?', [otpRows[0].id]);
     res.json({ message: 'Admin login successful' });
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
@@ -319,7 +320,7 @@ app.post('/api/upload-certificates', upload.fields([
           const certificateId = generateUUID();
           const verificationCode = Math.random().toString(36).substring(2, 15);
           
-          await db.execute('INSERT INTO certificates (program_name, name, email, certificate_path, certificate_id, verification_code) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE certificate_path = VALUES(certificate_path), certificate_id = VALUES(certificate_id), verification_code = VALUES(verification_code)',
+          await db.query('INSERT INTO certificates (program_name, name, email, certificate_path, certificate_id, verification_code) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE certificate_path = VALUES(certificate_path), certificate_id = VALUES(certificate_id), verification_code = VALUES(verification_code)',
             [programName, participant.name, participant.email, cert.path, certificateId, verificationCode]);
           uploaded++;
         } catch (err) {
@@ -353,11 +354,11 @@ app.get('/api/programs', async (req, res) => {
     }
     
     // Try programs table first
-    let [rows] = await db.execute('SELECT id, title, link, dates, expiry_date, created_by FROM programs ORDER BY title');
+    let [rows] = await db.query('SELECT id, title, link, dates, expiry_date, created_by FROM programs ORDER BY title');
     
     // If no programs in table, use certificates
     if (rows.length === 0) {
-      [rows] = await db.execute('SELECT DISTINCT program_name as title FROM certificates ORDER BY program_name');
+      [rows] = await db.query('SELECT DISTINCT program_name as title FROM certificates ORDER BY program_name');
       rows = rows.map(row => ({ title: row.title, link: '', dates: '' }));
     }
     
@@ -375,14 +376,14 @@ app.post('/api/request-certificate', async (req, res) => {
   const { programName, name, email } = req.body;
   
   try {
-    const [rows] = await db.execute('SELECT * FROM certificates WHERE program_name = ? AND email = ? AND name = ?', 
+    const [rows] = await db.query('SELECT * FROM certificates WHERE program_name = ? AND email = ? AND name = ?', 
       [programName, email.toLowerCase(), name]);
     if (rows.length === 0) return res.status(404).json({ error: 'Certificate not found' });
     
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     
-    await db.execute('INSERT INTO otps (email, otp, expires_at) VALUES (?, ?, ?)',
+    await db.query('INSERT INTO otps (email, otp, expires_at) VALUES (?, ?, ?)',
       [email.toLowerCase(), otp, expiresAt]);
     
     // Send OTP email
@@ -434,13 +435,13 @@ app.post('/api/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
   
   try {
-    const [otpRows] = await db.execute('SELECT * FROM otps WHERE email = ? AND otp = ? AND expires_at > NOW() AND verified = FALSE',
+    const [otpRows] = await db.query('SELECT * FROM otps WHERE email = ? AND otp = ? AND expires_at > NOW() AND verified = FALSE',
       [email.toLowerCase(), otp]);
     if (otpRows.length === 0) return res.status(400).json({ error: 'Invalid or expired OTP' });
     
-    await db.execute('UPDATE otps SET verified = TRUE WHERE id = ?', [otpRows[0].id]);
+    await db.query('UPDATE otps SET verified = TRUE WHERE id = ?', [otpRows[0].id]);
     
-    const [certRows] = await db.execute('SELECT * FROM certificates WHERE email = ?', [email.toLowerCase()]);
+    const [certRows] = await db.query('SELECT * FROM certificates WHERE email = ?', [email.toLowerCase()]);
     if (certRows.length === 0) return res.status(404).json({ error: 'Certificate not found' });
     
     const cert = certRows[0];
@@ -468,7 +469,7 @@ app.get('/api/download-certificate/:id', async (req, res) => {
   const { id } = req.params;
   
   try {
-    const [rows] = await db.execute('SELECT * FROM certificates WHERE id = ?', [id]);
+    const [rows] = await db.query('SELECT * FROM certificates WHERE id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Certificate not found' });
     
     const cert = rows[0];
@@ -488,7 +489,7 @@ app.get('/api/download-certificate/:id', async (req, res) => {
 // Admin analytics
 app.get('/api/admin/analytics', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT program_name, COUNT(*) as total_certificates FROM certificates GROUP BY program_name');
+    const [rows] = await db.query('SELECT program_name, COUNT(*) as total_certificates FROM certificates GROUP BY program_name');
     res.json(rows.map(row => ({ ...row, recent_uploads: 0 })));
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
@@ -501,7 +502,7 @@ app.get('/api/admin/search', async (req, res) => {
   if (!q) return res.json([]);
   
   try {
-    const [rows] = await db.execute('SELECT * FROM certificates WHERE name LIKE ? OR email LIKE ? LIMIT 50', [`%${q}%`, `%${q}%`]);
+    const [rows] = await db.query('SELECT * FROM certificates WHERE name LIKE ? OR email LIKE ? LIMIT 50', [`%${q}%`, `%${q}%`]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: 'Search failed' });
@@ -515,11 +516,11 @@ app.post('/api/admin/delete-program', async (req, res) => {
     console.log('Deleting program and all related data:', programName);
     
     // Delete certificates first
-    const [certResult] = await db.execute('DELETE FROM certificates WHERE program_name = ?', [programName]);
+    const [certResult] = await db.query('DELETE FROM certificates WHERE program_name = ?', [programName]);
     console.log('Deleted certificates:', certResult.affectedRows);
     
     // Delete program
-    const [progResult] = await db.execute('DELETE FROM programs WHERE title = ?', [programName]);
+    const [progResult] = await db.query('DELETE FROM programs WHERE title = ?', [programName]);
     console.log('Deleted program:', progResult.affectedRows);
     
     if (progResult.affectedRows === 0 && certResult.affectedRows === 0) {
@@ -545,11 +546,11 @@ app.delete('/api/admin/program/:name', async (req, res) => {
     console.log('Deleting program and all related data:', name);
     
     // Delete certificates first
-    const [certResult] = await db.execute('DELETE FROM certificates WHERE program_name = ?', [name]);
+    const [certResult] = await db.query('DELETE FROM certificates WHERE program_name = ?', [name]);
     console.log('Deleted certificates:', certResult.affectedRows);
     
     // Delete program
-    const [progResult] = await db.execute('DELETE FROM programs WHERE title = ?', [name]);
+    const [progResult] = await db.query('DELETE FROM programs WHERE title = ?', [name]);
     console.log('Deleted program:', progResult.affectedRows);
     
     if (progResult.affectedRows === 0 && certResult.affectedRows === 0) {
@@ -571,7 +572,7 @@ app.delete('/api/admin/program/:name', async (req, res) => {
 app.get('/api/admin/export/:program', async (req, res) => {
   const { program } = req.params;
   try {
-    const [rows] = await db.execute('SELECT name, email FROM certificates WHERE program_name = ?', [program]);
+    const [rows] = await db.query('SELECT name, email FROM certificates WHERE program_name = ?', [program]);
     const csv = 'name,email\n' + rows.map(r => `"${r.name}","${r.email}"`).join('\n');
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${program}.csv"`);
@@ -585,7 +586,7 @@ app.get('/api/admin/export/:program', async (req, res) => {
 app.get('/api/program-details/:program', async (req, res) => {
   const { program } = req.params;
   try {
-    const [rows] = await db.execute('SELECT title, link, dates FROM programs WHERE title = ?', [program]);
+    const [rows] = await db.query('SELECT title, link, dates FROM programs WHERE title = ?', [program]);
     
     if (rows.length > 0) {
       res.json(rows[0]);
@@ -635,10 +636,10 @@ app.post('/api/admin/upload-programs-csv', upload.single('programsCsv'), async (
         if (title) {
           try {
             // Check for duplicate (same title + dates)
-            const [existing] = await db.execute('SELECT id FROM programs WHERE title = ? AND dates = ?', [title, dates || '']);
+            const [existing] = await db.query('SELECT id FROM programs WHERE title = ? AND dates = ?', [title, dates || '']);
             
             if (existing.length === 0) {
-              await db.execute('INSERT INTO programs (title, link, dates) VALUES (?, ?, ?)', 
+              await db.query('INSERT INTO programs (title, link, dates) VALUES (?, ?, ?)', 
                 [title, link || '', dates || '']);
               added++;
             } else {
@@ -681,7 +682,7 @@ app.post('/api/admin/add-program', async (req, res) => {
   
   try {
     // Check for duplicate (same title + dates)
-    const [existing] = await db.execute('SELECT id FROM programs WHERE title = ? AND dates = ?', [title, dates || '']);
+    const [existing] = await db.query('SELECT id FROM programs WHERE title = ? AND dates = ?', [title, dates || '']);
     
     if (existing.length > 0) {
       return res.status(400).json({ error: 'Program with same name and duration already exists' });
@@ -698,7 +699,7 @@ app.post('/api/admin/add-program', async (req, res) => {
       }
     }
     
-    await db.execute('INSERT INTO programs (title, link, dates, expiry_date) VALUES (?, ?, ?, ?)', 
+    await db.query('INSERT INTO programs (title, link, dates, expiry_date) VALUES (?, ?, ?, ?)', 
       [title, link || '', dates || '', expiryDate || null]);
     
     // Force clear cache
@@ -719,7 +720,7 @@ app.post('/api/admin/update-expiry', async (req, res) => {
   try {
     const { programId, expiryDate } = req.body;
     
-    await db.execute('UPDATE programs SET expiry_date = ? WHERE id = ?', 
+    await db.query('UPDATE programs SET expiry_date = ? WHERE id = ?', 
       [expiryDate || null, programId]);
     
     // Clear cache
@@ -742,7 +743,7 @@ app.get('/api/admin/download/:id', async (req, res) => {
   const { id } = req.params;
   try {
     console.log('Admin downloading certificate ID:', id);
-    const [rows] = await db.execute('SELECT * FROM certificates WHERE id = ?', [id]);
+    const [rows] = await db.query('SELECT * FROM certificates WHERE id = ?', [id]);
     if (rows.length === 0) {
       console.log('Certificate not found for ID:', id);
       return res.status(404).json({ error: 'Certificate not found' });
@@ -771,14 +772,14 @@ app.get('/api/preview-pdf', async (req, res) => {
   
   try {
     // Verify OTP first
-    const [otpRows] = await db.execute('SELECT * FROM otps WHERE email = ? AND otp = ? AND expires_at > NOW()',
+    const [otpRows] = await db.query('SELECT * FROM otps WHERE email = ? AND otp = ? AND expires_at > NOW()',
       [email.toLowerCase(), otp]);
     if (otpRows.length === 0) {
       res.setHeader('Content-Type', 'text/html');
       return res.send('<h3>Invalid or expired OTP</h3>');
     }
     
-    const [rows] = await db.execute('SELECT * FROM certificates WHERE program_name = ? AND email = ?', 
+    const [rows] = await db.query('SELECT * FROM certificates WHERE program_name = ? AND email = ?', 
       [programName, email.toLowerCase()]);
     if (rows.length === 0) {
       res.setHeader('Content-Type', 'text/html');
@@ -792,7 +793,7 @@ app.get('/api/preview-pdf', async (req, res) => {
     }
     
     // Mark OTP as used
-    await db.execute('UPDATE otps SET verified = TRUE WHERE id = ?', [otpRows[0].id]);
+    await db.query('UPDATE otps SET verified = TRUE WHERE id = ?', [otpRows[0].id]);
     
     // Set headers for PDF display
     res.setHeader('Content-Type', 'application/pdf');
@@ -811,7 +812,7 @@ app.get('/api/admin/all-downloads', async (req, res) => {
   try {
     // First check if table exists, if not create it
     try {
-      const [rows] = await db.execute(
+      const [rows] = await db.query(
         'SELECT * FROM download_history ORDER BY downloaded_at DESC LIMIT 100'
       );
       res.json(rows);
@@ -833,7 +834,7 @@ app.post('/api/admin/add-user', checkRole(['super_admin']), async (req, res) => 
   
   try {
     // Ensure admin_users table exists
-    await db.execute(`CREATE TABLE IF NOT EXISTS admin_users (
+    await db.query(`CREATE TABLE IF NOT EXISTS admin_users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(255) UNIQUE NOT NULL,
       email VARCHAR(255) NOT NULL,
@@ -843,7 +844,7 @@ app.post('/api/admin/add-user', checkRole(['super_admin']), async (req, res) => 
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     
-    await db.execute('INSERT INTO admin_users (username, email, password, role) VALUES (?, ?, ?, ?)', 
+    await db.query('INSERT INTO admin_users (username, email, password, role) VALUES (?, ?, ?, ?)', 
       [username, email, password, role]);
     
     await logActivity(req.admin.id, req.admin.username, 'CREATE_USER', `Created user: ${username} with role: ${role}`, req.ip);
@@ -871,7 +872,7 @@ app.get('/api/admin/current-user', (req, res) => {
 // Activity Log (Super Admin Only)
 app.get('/api/admin/activity-log', checkRole(['super_admin']), async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT 100');
+    const [rows] = await db.query('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT 100');
     res.json(rows);
   } catch (error) {
     res.json([]);
@@ -885,7 +886,7 @@ app.get('/api/admin/user-contributions', async (req, res) => {
     
     // Get programs created by each user
     try {
-      const [programs] = await db.execute('SELECT created_by, title FROM programs WHERE created_by IS NOT NULL');
+      const [programs] = await db.query('SELECT created_by, title FROM programs WHERE created_by IS NOT NULL');
       programs.forEach(prog => {
         if (!userStats[prog.created_by]) {
           userStats[prog.created_by] = { programs: [], certificates: 0, programNames: [] };
@@ -899,7 +900,7 @@ app.get('/api/admin/user-contributions', async (req, res) => {
     
     // Get certificates uploaded by each user
     try {
-      const [certs] = await db.execute('SELECT uploaded_by, COUNT(*) as count FROM certificates WHERE uploaded_by IS NOT NULL GROUP BY uploaded_by');
+      const [certs] = await db.query('SELECT uploaded_by, COUNT(*) as count FROM certificates WHERE uploaded_by IS NOT NULL GROUP BY uploaded_by');
       certs.forEach(cert => {
         if (!userStats[cert.uploaded_by]) {
           userStats[cert.uploaded_by] = { programs: [], certificates: 0, programNames: [] };
@@ -920,14 +921,14 @@ app.get('/api/admin/user-contributions', async (req, res) => {
 // Generate Certificate ID and Verification Code
 app.post('/api/admin/generate-cert-ids', checkRole(['super_admin', 'admin']), async (req, res) => {
   try {
-    const [certificates] = await db.execute('SELECT id, name, program_name FROM certificates WHERE certificate_id IS NULL OR verification_code IS NULL');
+    const [certificates] = await db.query('SELECT id, name, program_name FROM certificates WHERE certificate_id IS NULL OR verification_code IS NULL');
     
     let updated = 0;
     for (const cert of certificates) {
       const certificateId = generateUUID();
       const verificationCode = Math.random().toString(36).substring(2, 15).toUpperCase();
       
-      await db.execute('UPDATE certificates SET certificate_id = ?, verification_code = ? WHERE id = ?',
+      await db.query('UPDATE certificates SET certificate_id = ?, verification_code = ? WHERE id = ?',
         [certificateId, verificationCode, cert.id]);
       updated++;
     }
@@ -944,7 +945,7 @@ app.post('/api/admin/generate-cert-ids', checkRole(['super_admin', 'admin']), as
 app.get('/api/admin/users', async (req, res) => {
   try {
     // Ensure admin_users table exists
-    await db.execute(`CREATE TABLE IF NOT EXISTS admin_users (
+    await db.query(`CREATE TABLE IF NOT EXISTS admin_users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(255) UNIQUE NOT NULL,
       email VARCHAR(255) NOT NULL,
@@ -954,7 +955,7 @@ app.get('/api/admin/users', async (req, res) => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     
-    const [rows] = await db.execute('SELECT id, username, email, role, created_at FROM admin_users ORDER BY created_at DESC');
+    const [rows] = await db.query('SELECT id, username, email, role, created_at FROM admin_users ORDER BY created_at DESC');
     
     if (rows.length === 0) {
       // Return default admin user if no users exist
@@ -985,10 +986,10 @@ app.post('/api/admin/reset-password', async (req, res) => {
   
   try {
     // Try admin_users table first
-    const [result1] = await db.execute('UPDATE admin_users SET password = ? WHERE username = ?', [newPassword, username]);
+    const [result1] = await db.query('UPDATE admin_users SET password = ? WHERE username = ?', [newPassword, username]);
     
     // Try old admins table
-    const [result2] = await db.execute('UPDATE admins SET password = ? WHERE username = ?', [newPassword, username]);
+    const [result2] = await db.query('UPDATE admins SET password = ? WHERE username = ?', [newPassword, username]);
     
     if (result1.affectedRows > 0 || result2.affectedRows > 0) {
       res.json({ message: `Password reset for ${username}` });
@@ -1015,7 +1016,7 @@ app.put('/api/admin/edit-user/:id', checkRole(['super_admin']), async (req, res)
   const { username, email, role } = req.body;
   
   try {
-    await db.execute('UPDATE admin_users SET username = ?, email = ?, role = ? WHERE id = ?',
+    await db.query('UPDATE admin_users SET username = ?, email = ?, role = ? WHERE id = ?',
       [username, email, role, id]);
     
     await logActivity(req.admin.id, req.admin.username, 'EDIT_USER', `Edited user: ${username}`, req.ip);
@@ -1033,8 +1034,8 @@ app.put('/api/admin/edit-user/:id', checkRole(['super_admin']), async (req, res)
 app.delete('/api/admin/delete-user/:id', checkRole(['super_admin']), async (req, res) => {
   const { id } = req.params;
   try {
-    const [user] = await db.execute('SELECT username FROM admin_users WHERE id = ?', [id]);
-    await db.execute('DELETE FROM admin_users WHERE id = ?', [id]);
+    const [user] = await db.query('SELECT username FROM admin_users WHERE id = ?', [id]);
+    await db.query('DELETE FROM admin_users WHERE id = ?', [id]);
     
     await logActivity(req.admin.id, req.admin.username, 'DELETE_USER', `Deleted user: ${user[0]?.username}`, req.ip);
     
@@ -1048,17 +1049,17 @@ app.delete('/api/admin/delete-user/:id', checkRole(['super_admin']), async (req,
 app.get('/api/admin/statistics', async (req, res) => {
   try {
     // Get basic stats from certificates table
-    const [totalCerts] = await db.execute('SELECT COUNT(*) as count FROM certificates');
-    const [totalPrograms] = await db.execute('SELECT COUNT(DISTINCT program_name) as count FROM certificates');
-    const [recentCerts] = await db.execute('SELECT COUNT(*) as count FROM certificates WHERE created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)');
+    const [totalCerts] = await db.query('SELECT COUNT(*) as count FROM certificates');
+    const [totalPrograms] = await db.query('SELECT COUNT(DISTINCT program_name) as count FROM certificates');
+    const [recentCerts] = await db.query('SELECT COUNT(*) as count FROM certificates WHERE created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)');
     
     // Try to get download stats, fallback if table doesn't exist
     let downloadStats = { totalDownloads: 0, activeUsers: 0, popularProgram: 'None', todayDownloads: 0 };
     try {
-      const [totalDownloads] = await db.execute('SELECT COUNT(*) as count FROM download_history');
-      const [activeUsers] = await db.execute('SELECT COUNT(DISTINCT email) as count FROM download_history WHERE downloaded_at > DATE_SUB(NOW(), INTERVAL 30 DAY)');
-      const [popularProgram] = await db.execute('SELECT program_name, COUNT(*) as count FROM download_history GROUP BY program_name ORDER BY count DESC LIMIT 1');
-      const [todayDownloads] = await db.execute('SELECT COUNT(*) as count FROM download_history WHERE DATE(downloaded_at) = CURDATE()');
+      const [totalDownloads] = await db.query('SELECT COUNT(*) as count FROM download_history');
+      const [activeUsers] = await db.query('SELECT COUNT(DISTINCT email) as count FROM download_history WHERE downloaded_at > DATE_SUB(NOW(), INTERVAL 30 DAY)');
+      const [popularProgram] = await db.query('SELECT program_name, COUNT(*) as count FROM download_history GROUP BY program_name ORDER BY count DESC LIMIT 1');
+      const [todayDownloads] = await db.query('SELECT COUNT(*) as count FROM download_history WHERE DATE(downloaded_at) = CURDATE()');
       
       downloadStats = {
         totalDownloads: totalDownloads[0].count,
@@ -1095,7 +1096,7 @@ app.post('/api/admin/bulk-download', async (req, res) => {
   const { certificateIds } = req.body;
   
   try {
-    const [certificates] = await db.execute(
+    const [certificates] = await db.query(
       `SELECT * FROM certificates WHERE id IN (${certificateIds.map(() => '?').join(',')})`, 
       certificateIds
     );
@@ -1116,7 +1117,7 @@ app.post('/api/admin/bulk-download', async (req, res) => {
 app.get('/api/certificates/:program', async (req, res) => {
   const { program } = req.params;
   try {
-    const [rows] = await db.execute('SELECT * FROM certificates WHERE program_name = ? ORDER BY name', [program]);
+    const [rows] = await db.query('SELECT * FROM certificates WHERE program_name = ? ORDER BY name', [program]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
@@ -1126,7 +1127,7 @@ app.get('/api/certificates/:program', async (req, res) => {
 // Get admin programs endpoint
 app.get('/api/admin/programs', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM programs ORDER BY title');
+    const [rows] = await db.query('SELECT * FROM programs ORDER BY title');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
@@ -1140,7 +1141,7 @@ app.post('/api/verify-certificate', async (req, res) => {
   const { code } = req.body;
   
   try {
-    const [rows] = await db.execute(
+    const [rows] = await db.query(
       'SELECT * FROM certificates WHERE certificate_id = ? OR verification_code = ?', 
       [code, code]
     );

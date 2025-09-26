@@ -9,22 +9,12 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: DB_HOST
+      - key: DATABASE_URL
         fromDatabase:
-          name: certificates-mysql
-          property: host
-      - key: DB_USER
-        fromDatabase:
-          name: certificates-mysql
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: certificates-mysql
-          property: password
-      - key: DB_NAME
-        value: certificates_db
+          name: certificates-postgres
+          property: connectionString
 
 databases:
-  - name: certificates-mysql
+  - name: certificates-postgres
     databaseName: certificates_db
     user: certificates_user
