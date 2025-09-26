@@ -32,6 +32,11 @@ app.use((req, res, next) => {
   next();
 });
 
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL environment variable is not set');
+  process.exit(1);
+}
+
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,

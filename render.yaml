@@ -18,3 +18,4 @@ databases:
   - name: certificates-postgres
     databaseName: certificates_db
     user: certificates_user
+    plan: free
