@@ -53,6 +53,7 @@ db.serialize(() => {
   )`);
   
   db.run(`INSERT OR IGNORE INTO admins (username, password, email) VALUES ('admin', 'admin123', 'admin@example.com')`);
+  db.run(`INSERT OR IGNORE INTO admins (username, password, email) VALUES ('superadmin', 'super123', 'superadmin@example.com')`);
 });
 
 const transporter = nodemailer.createTransport({
@@ -201,14 +202,34 @@ app.get('/api/download-certificate/:id', (req, res) => {
 app.post('/api/admin/programs', (req, res) => {
   const { title, link, dates, expiry_date } = req.body;
   
+  if (!title) {
+    return res.status(400).json({ error: 'Program title is required' });
+  }
+  
   db.run('INSERT INTO programs (title, link, dates, expiry_date) VALUES (?, ?, ?, ?)',
     [title, link || '', dates || '', expiry_date || null], function(err) {
     
     if (err) {
-      return res.status(500).json({ error: 'Failed to add program' });
+      console.error('Program insert error:', err);
+      return res.status(500).json({ error: 'Failed to add program: ' + err.message });
     }
     
     res.json({ message: 'Program added successfully', id: this.lastID });
+  });
+});
+
+app.post('/api/reset-admin', (req, res) => {
+  db.run('DELETE FROM admins', (err) => {
+    if (err) return res.status(500).json({ error: 'Reset failed' });
+    
+    db.run(`INSERT INTO admins (username, password, email) VALUES ('admin', 'admin123', 'admin@example.com')`, (err) => {
+      if (err) return res.status(500).json({ error: 'Reset failed' });
+      
+      db.run(`INSERT INTO admins (username, password, email) VALUES ('superadmin', 'super123', 'superadmin@example.com')`, (err) => {
+        if (err) return res.status(500).json({ error: 'Reset failed' });
+        res.json({ message: 'Admin passwords reset: admin/admin123, superadmin/super123' });
+      });
+    });
   });
 });
 
