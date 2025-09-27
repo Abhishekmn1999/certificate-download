@@ -153,6 +153,8 @@ app.get('/api/admin/programs', (req, res) => {
 app.post('/api/admin/programs', (req, res) => {
   const { title, link, dates, expiry_date } = req.body;
   
+  console.log('Adding program:', { title, link, dates, expiry_date });
+  
   if (!title) {
     return res.status(400).json({ error: 'Program title is required' });
   }
@@ -163,13 +165,11 @@ app.post('/api/admin/programs', (req, res) => {
     [title, link || '', dates || '', createdBy, expiry_date || null], function(err) {
     
     if (err) {
-      console.error('Program insert error:', err);
-      if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ error: 'Program with this title and dates already exists' });
-      }
-      return res.status(500).json({ error: 'Failed to add program' });
+      console.error('Program insert error:', err.message);
+      return res.status(500).json({ error: 'Database error: ' + err.message });
     }
     
+    console.log('Program added with ID:', this.lastID);
     res.json({ message: 'Program added successfully', id: this.lastID });
   });
 });
@@ -270,6 +270,8 @@ app.get('/api/admin/users', (req, res) => {
 app.post('/api/admin/users', (req, res) => {
   const { username, password, email, role } = req.body;
   
+  console.log('Adding user:', { username, email, role });
+  
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
   }
@@ -278,12 +280,11 @@ app.post('/api/admin/users', (req, res) => {
     [username, password, email || '', role || 'admin'], function(err) {
     
     if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ error: 'Username already exists' });
-      }
-      return res.status(500).json({ error: 'Failed to create user' });
+      console.error('User insert error:', err.message);
+      return res.status(500).json({ error: 'Database error: ' + err.message });
     }
     
+    console.log('User added with ID:', this.lastID);
     res.json({ message: 'User created successfully', id: this.lastID });
   });
 });
