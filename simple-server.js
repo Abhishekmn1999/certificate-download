@@ -16,7 +16,7 @@ let certificates = [];
 let otps = [];
 let admins = [
   { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
-  { id: 2, username: 'superadmin', password: 'super123', role: 'superadmin' }
+  { id: 2, username: 'superadmin', password: 'super123', role: 'super_admin' }
 ];
 
 // Load certificates from files

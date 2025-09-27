@@ -763,7 +763,8 @@
                 if (data.error) {
                     showLoginMessage(data.error, 'error');
                 } else {
-                    // Skip OTP for now
+                    currentUserRole = data.role;
+                    currentUsername = data.username;
                     completeAdminLogin();
                 }
             })
@@ -819,19 +820,9 @@
             document.getElementById('login-form').classList.add('hidden');
             document.getElementById('upload-form').classList.remove('hidden');
             
-            // Get current user info
-            fetch('/api/admin/current-user')
-                .then(response => response.json())
-                .then(user => {
-                    currentUserRole = user.role;
-                    currentUsername = user.username;
-                    updateUIForRole();
-                    showToast(`Welcome ${user.username} (${user.role})!`, 'success');
-                })
-                .catch(() => {
-                    currentUserRole = 'admin';
-                    showToast('Admin login successful!', 'success');
-                });
+            // Use the role from login response
+            updateUIForRole();
+            showToast(`Welcome ${currentUsername} (${currentUserRole})!`, 'success');
             
             loadPrograms();
             loadDashboardStats();
@@ -840,26 +831,23 @@
         function updateUIForRole() {
             console.log('Updating UI for role:', currentUserRole);
             
-            // Show all elements first
-            document.querySelectorAll('.super-admin-only, .admin-only').forEach(el => {
-                el.style.display = '';
-            });
-            
             // Hide based on role
-            if (currentUserRole === 'viewer') {
-                // Viewer: Only view and analytics
-                document.querySelectorAll('.admin-only, .super-admin-only').forEach(el => {
-                    el.style.display = 'none';
-                });
-                // Switch to view tab for viewers
-                showAdminTab('view');
-            } else if (currentUserRole === 'admin') {
+            if (currentUserRole === 'admin') {
                 // Admin: Hide super admin features only
                 document.querySelectorAll('.super-admin-only').forEach(el => {
                     el.style.display = 'none';
                 });
+            } else if (currentUserRole === 'superadmin' || currentUserRole === 'super_admin') {
+                // Super admin: Show everything
+                document.querySelectorAll('.super-admin-only, .admin-only').forEach(el => {
+                    el.style.display = '';
+                });
+            } else if (currentUserRole === 'viewer') {
+                // Viewer: Only view and analytics
+                document.querySelectorAll('.admin-only, .super-admin-only').forEach(el => {
+                    el.style.display = 'none';
+                });
             }
-            // Super admin sees everything (no hiding needed)
         }
 
         function uploadCertificates() {
