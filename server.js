@@ -198,6 +198,24 @@ app.get('/api/download-certificate/:id', (req, res) => {
   });
 });
 
+app.post('/api/admin/programs', (req, res) => {
+  const { title, link, dates, expiry_date } = req.body;
+  
+  db.run('INSERT INTO programs (title, link, dates, expiry_date) VALUES (?, ?, ?, ?)',
+    [title, link || '', dates || '', expiry_date || null], function(err) {
+    
+    if (err) {
+      return res.status(500).json({ error: 'Failed to add program' });
+    }
+    
+    res.json({ message: 'Program added successfully', id: this.lastID });
+  });
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
