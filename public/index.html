@@ -1607,7 +1607,7 @@
                 return;
             }
             
-            fetch('/api/admin/add-user', {
+            fetch('/api/admin/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, email, password, role })

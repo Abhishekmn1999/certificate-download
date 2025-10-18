@@ -305,6 +305,26 @@ app.get('/api/download-certificate/:id', (req, res) => {
   res.download(path.resolve(cert.certificate_path), filename);
 });
 
+app.post('/api/upload-certificates', (req, res) => {
+  res.json({ message: 'Upload feature not available in simple mode. Certificates are auto-loaded from /certificates folder.' });
+});
+
+app.get('/api/certificates/:program', (req, res) => {
+  const { program } = req.params;
+  const programCerts = certificates.filter(c => c.program_name === program);
+  res.json(programCerts);
+});
+
+app.get('/api/admin/search', (req, res) => {
+  const { q } = req.query;
+  const results = certificates.filter(c => 
+    c.name.toLowerCase().includes(q.toLowerCase()) ||
+    c.email.toLowerCase().includes(q.toLowerCase()) ||
+    c.program_name.toLowerCase().includes(q.toLowerCase())
+  );
+  res.json(results);
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Simple server running on http://localhost:${PORT}`);
   console.log(`📊 Loaded ${certificates.length} certificates`);
