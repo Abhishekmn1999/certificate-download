@@ -22,22 +22,32 @@ let admins = [
 // Load certificates from files
 function loadCertificates() {
   const certDir = path.join(__dirname, 'certificates');
+  console.log('Looking for certificates in:', certDir);
+  
   if (fs.existsSync(certDir)) {
     const files = fs.readdirSync(certDir);
+    console.log('Found files:', files.length);
+    
     files.forEach(file => {
       if (file.endsWith('.pdf')) {
-        const name = file.replace(' - Certificate.pdf', '');
-        certificates.push({
+        const name = file.replace(' - Certificate.pdf', '').replace('.pdf', '');
+        const cert = {
           id: certificates.length + 1,
-          program_name: 'Default Program',
+          program_name: 'Dynamics and Evolution of RNA Functions',
           name: name,
           email: name.toLowerCase().replace(/\s+/g, '.') + '@example.com',
           certificate_path: path.join(certDir, file),
           created_at: new Date().toISOString()
-        });
+        };
+        certificates.push(cert);
+        console.log('Loaded certificate for:', name);
       }
     });
+  } else {
+    console.log('Certificates directory not found');
   }
+  
+  console.log('Total certificates loaded:', certificates.length);
 }
 
 loadCertificates();
