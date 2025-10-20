@@ -29,18 +29,34 @@
             #login-form { max-width: 100% !important; margin: 0 10px; }
         }
         @media (max-width: 480px) {
-            .container { padding: 10px; }
-            .header h1 { font-size: 1.5rem; }
-            .content { padding: 16px; }
-            #admin-content { padding: 12px; }
-            .cert-table th, .cert-table td { padding: 8px 4px; }
-            .download-btn { padding: 6px 12px; font-size: 11px; }
+            .container { padding: 5px; }
+            .header h1 { font-size: 1.2rem; }
+            .content { padding: 12px; }
+            #admin-content { padding: 8px; }
+            .cert-table th, .cert-table td { padding: 6px 3px; font-size: 11px; }
+            .download-btn { padding: 4px 8px; font-size: 10px; }
             .dashboard-grid { grid-template-columns: 1fr; }
-            .form-group { margin-bottom: 16px; }
-            .admin-section h3 { font-size: 20px; }
-            .col-6 h2 { font-size: 14px; }
-            .logos img { height: 40px !important; }
-            div[style*="display: flex; gap: 12px"] { flex-direction: column; gap: 8px; }
+            .form-group { margin-bottom: 12px; }
+            .admin-section h3 { font-size: 18px; }
+            .col-6 h2 { font-size: 12px; }
+            .logos img { height: 35px !important; }
+            div[style*="display: flex; gap: 12px"] { flex-direction: column; gap: 6px; }
+            button { padding: 12px 16px; font-size: 13px; }
+            input, select { padding: 12px 14px; font-size: 13px; }
+            .tab { padding: 10px 16px; font-size: 13px; }
+            .toast { min-width: 280px; padding: 16px 20px; }
+        }
+        @media (max-width: 360px) {
+            .container { padding: 3px; }
+            .content { padding: 8px; }
+            .col-6 h2 { font-size: 10px; }
+            .logos img { height: 30px !important; }
+            button { padding: 10px 12px; font-size: 12px; }
+            input, select { padding: 10px 12px; font-size: 12px; }
+            .tab { padding: 8px 12px; font-size: 12px; }
+            .cert-table th, .cert-table td { padding: 4px 2px; font-size: 10px; }
+            .download-btn { padding: 3px 6px; font-size: 9px; }
+            .toast { min-width: 250px; padding: 12px 16px; font-size: 13px; }
         }
         .logos { display: flex; align-items: center; margin-bottom: 10px; background: white; padding: 8px; border-radius: 8px; }
         .col-4, .col-6, .col-2 { flex: 1; }
@@ -75,7 +91,12 @@
         .dashboard-card:hover { transform: translateY(-2px); }
         .dashboard-card h3 { color: #374151; margin-bottom: 16px; font-size: 18px; font-weight: 600; }
         .stats-number { font-size: 2.5rem; font-weight: 800; color: #667eea; }
-        .cert-table { width: 100%; border-collapse: collapse; margin-top: 24px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+        .cert-table { width: 100%; border-collapse: collapse; margin-top: 24px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.08); overflow-x: auto; display: block; white-space: nowrap; }
+        .cert-table thead, .cert-table tbody, .cert-table tr { display: table; width: 100%; table-layout: fixed; }
+        @media (max-width: 768px) {
+            .cert-table { font-size: 12px; }
+            .cert-table th, .cert-table td { padding: 8px 4px; }
+        }
         .cert-table th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: left; font-weight: 600; font-size: 14px; }
         .cert-table td { padding: 20px; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
         .cert-table tr:hover { background: #f9fafb; }
@@ -145,7 +166,7 @@
                     <div id="program-dates" style="color: #667eea; font-weight: bold; margin-bottom: 8px; font-size: 14px;"></div>
                     <div id="program-note" style="color: #666; font-size: 13px;"></div>
                 </div>
-                <div style="display: flex; gap: 12px;">
+                <div class="form-row" style="display: flex; gap: 12px;">
                     <div style="flex: 1;">
                         <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 15px;">Full Name:</label>
                         <input type="text" id="name" placeholder="Enter your full name" style="width: 100%; padding: 16px 20px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f9fafb; font-family: inherit;">
@@ -155,6 +176,11 @@
                         <input type="email" id="email" placeholder="Enter your email" style="width: 100%; padding: 16px 20px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f9fafb; font-family: inherit;">
                     </div>
                 </div>
+                <style>
+                @media (max-width: 600px) {
+                    .form-row { flex-direction: column !important; gap: 0 !important; }
+                }
+                </style>
                 <button onclick="requestCertificate()" style="width: 100%; margin-top: 20px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">Request Certificate</button>
             </div>
 
@@ -572,8 +598,8 @@
                     document.getElementById('program-dates').textContent = data.dates ? `Duration: ${data.dates}` : '';
                     
                     const noteText = data.link ? 
-                        `📝 Note: Check your name in the program webpage participant list before downloading. Visit: <a href="${data.link}" target="_blank" style="color: #667eea; text-decoration: underline;">${data.link}</a>` :
-                        '📝 Note: Check your name in the program participant list before downloading.';
+                        `📝 <strong>Important:</strong> Please enter your <strong>full name exactly as registered</strong> and your <strong>registered email ID</strong>. Check the participant list at: <a href="${data.link}" target="_blank" style="color: #667eea; text-decoration: underline; font-weight: 600;">${data.link}</a>` :
+                        '📝 <strong>Important:</strong> Please enter your <strong>full name exactly as registered</strong> and your <strong>registered email ID</strong>.';
                     
                     document.getElementById('program-note').innerHTML = noteText;
                     document.getElementById('program-info').style.display = 'block';
@@ -908,6 +934,7 @@
                             document.getElementById('certificates').value = '';
                             document.getElementById('certificateFolder').value = '';
                             loadPrograms();
+                            loadDashboardStats();
                         }
                     } catch (e) {
                         showUploadMessage('Upload completed but response parsing failed', 'error');
@@ -1375,18 +1402,11 @@
         }
 
         function loadDashboardStats() {
-            fetch('/api/programs')
+            fetch('/api/admin/stats')
                 .then(response => response.json())
-                .then(programs => {
-                    document.getElementById('totalPrograms').textContent = programs.length;
-                })
-                .catch(() => {});
-            
-            fetch('/api/admin/analytics')
-                .then(response => response.json())
-                .then(data => {
-                    const total = data.reduce((sum, p) => sum + p.total_certificates, 0);
-                    document.getElementById('totalCertificates').textContent = total;
+                .then(stats => {
+                    document.getElementById('totalPrograms').textContent = stats.totalPrograms;
+                    document.getElementById('totalCertificates').textContent = stats.totalCertificates;
                 })
                 .catch(() => {});
         }

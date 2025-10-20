@@ -2,15 +2,17 @@
   "name": "certificate-download",
   "version": "2.0.0",
   "description": "Modern certificate download system",
-  "main": "simple-server.js",
+  "main": "mysql-server.js",
   "scripts": {
-    "start": "node simple-server.js",
-    "dev": "nodemon simple-server.js",
-    "prod": "NODE_ENV=production node simple-server.js",
+    "start": "node mysql-server.js",
+    "dev": "nodemon mysql-server.js",
+    "prod": "NODE_ENV=production node mysql-server.js",
     "build": "echo 'No build step required'"
   },
   "dependencies": {
     "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.15.2",
     "nodemailer": "^7.0.6"
   },
   "devDependencies": {
